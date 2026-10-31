@@ -154,6 +154,7 @@
         bgmInterval: null,
         bgmStep: 0,
         isBgmPlaying: false,
+        noiseBuf: null, // Pre-allocated reusable noise buffer to eliminate GC pauses
 
         init() {
             if (!this.ctx) {
@@ -162,6 +163,16 @@
             }
             if (this.ctx && this.ctx.state === 'suspended') {
                 this.ctx.resume();
+            }
+            // Pre-bake reusable noise buffer once
+            if (this.ctx && !this.noiseBuf) {
+                const sampleRate = this.ctx.sampleRate;
+                const length = Math.floor(sampleRate * 0.15); // 150ms buffer
+                this.noiseBuf = this.ctx.createBuffer(1, length, sampleRate);
+                const data = this.noiseBuf.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-4 * (i / length));
+                }
             }
         },
 
@@ -242,29 +253,26 @@
                     kickOsc.stop(now + 0.15);
                 }
 
-                // 2. Gritty Snare / Hi-Hat Percussion
-                const noiseBuf = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * 0.05), this.ctx.sampleRate);
-                const noiseData = noiseBuf.getChannelData(0);
-                for (let i = 0; i < noiseData.length; i++) {
-                    noiseData[i] = (Math.random() * 2 - 1) * Math.exp(-6 * (i / noiseData.length));
+                // 2. Gritty Snare / Hi-Hat Percussion (Uses pre-allocated noise buffer)
+                if (this.noiseBuf) {
+                    const hatNoise = this.ctx.createBufferSource();
+                    hatNoise.buffer = this.noiseBuf;
+
+                    const isSnare = (step % 8 === 4);
+                    const hatFilter = this.ctx.createBiquadFilter();
+                    hatFilter.type = isSnare ? 'bandpass' : 'highpass';
+                    hatFilter.frequency.setValueAtTime(isSnare ? 1600 : 7500, now);
+
+                    const hatGain = this.ctx.createGain();
+                    const hatVol = isSnare ? 0.09 : (step % 2 === 0 ? 0.035 : 0.015);
+                    hatGain.gain.setValueAtTime(hatVol, now);
+                    hatGain.gain.exponentialRampToValueAtTime(0.001, now + (isSnare ? 0.08 : 0.04));
+
+                    hatNoise.connect(hatFilter);
+                    hatFilter.connect(hatGain);
+                    hatGain.connect(this.ctx.destination);
+                    hatNoise.start(now);
                 }
-                const hatNoise = this.ctx.createBufferSource();
-                hatNoise.buffer = noiseBuf;
-
-                const isSnare = (step % 8 === 4);
-                const hatFilter = this.ctx.createBiquadFilter();
-                hatFilter.type = isSnare ? 'bandpass' : 'highpass';
-                hatFilter.frequency.setValueAtTime(isSnare ? 1600 : 7500, now);
-
-                const hatGain = this.ctx.createGain();
-                const hatVol = isSnare ? 0.09 : (step % 2 === 0 ? 0.035 : 0.015);
-                hatGain.gain.setValueAtTime(hatVol, now);
-                hatGain.gain.exponentialRampToValueAtTime(0.001, now + (isSnare ? 0.08 : 0.04));
-
-                hatNoise.connect(hatFilter);
-                hatFilter.connect(hatGain);
-                hatGain.connect(this.ctx.destination);
-                hatNoise.start(now);
 
                 // 3. Rolling Bassline Synth
                 const bassFreq = bassline64[step];
@@ -568,7 +576,7 @@
     const ctx = canvas.getContext('2d');
     
     const engine = Engine.create();
-    engine.gravity.y = 1.5;
+    engine.gravity.y = 2.0;
 
     let isLooping = true;
     let gameStarted = false;
@@ -580,6 +588,7 @@
     let entities = [];
     let particles = [];
     let shakeAmount = 0;
+    let livingEnemiesCount = 0; // Cached live enemy count to avoid per-frame array allocations
 
     // Strict Mouse State
     const mouse = { x: 0, y: 0, isDown: false };
@@ -838,6 +847,16 @@
                 vy = jumpVelocityY;
                 this.canJump = false;
                 SoundFX.playJump();
+            }
+
+            // Accelerated natural downward fall gravity
+            if (!this.canJump && vy > 0) {
+                vy += 0.65;
+            }
+
+            // Fast fall acceleration when ducking in mid-air
+            if (this.isDucking && !this.canJump) {
+                vy += 1.2;
             }
 
             // ONLY slow fall when the mouse is physically held down
@@ -1418,6 +1437,7 @@
             this.heldMob = null;
             this.throwCooldown = 150; // Ticks between throws
             this.windupTimer = 0;
+            this.searchTimer = 0;
         }
 
         update() {
@@ -1489,19 +1509,22 @@
                     }
                 }
             } else if (this.throwCooldown <= 0 && !this.isEntering) {
-                // Seek a nearby mob or crate to grab
-                const candidate = entities.find(e => 
-                    e !== this && 
-                    !e.isDying && 
-                    !e.markedForDeletion && 
-                    (e.type === 'slime' || e.type === 'zombie' || e.type === 'box') &&
-                    (player && player.grabbedEntity !== e) &&
-                    Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y) < 130
-                );
-
-                if (candidate) {
-                    this.heldMob = candidate;
-                    this.windupTimer = 0;
+                // Throttle search to every 10 frames instead of every frame
+                this.searchTimer = (this.searchTimer || 0) + 1;
+                if (this.searchTimer % 10 === 0) {
+                    for (let i = 0; i < entities.length; i++) {
+                        const e = entities[i];
+                        if (e !== this && 
+                            !e.isDying && 
+                            !e.markedForDeletion && 
+                            (e.type === 'slime' || e.type === 'zombie' || e.type === 'box') &&
+                            (!player || player.grabbedEntity !== e) &&
+                            Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y) < 130) {
+                            this.heldMob = e;
+                            this.windupTimer = 0;
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -1775,10 +1798,15 @@
                 frictionAir: 0.04,
                 density: 0.001
             });
-            super(body, 1, 'heart', 0.5);
+            super(body, 999999, 'heart', 0.5);
             this.canBeGrabbed = false; // Cannot be manipulated psychically
             this.rotAngle = 0;
             this.floatTimer = Math.random() * 100;
+        }
+
+        takeDamage(amount, sourceBody = null) {
+            // Indestructible: immune to bomb blasts, flying crates, and collisions
+            return;
         }
 
         update() {
@@ -1790,10 +1818,11 @@
                 y: -0.0006 + Math.sin(this.floatTimer) * 0.0003
             });
 
-            // Universal out-of-bounds check
+            // Safeguard against falling below world floor
             const pos = this.body.position;
-            if (pos.y > 1000 || pos.y < -400) {
-                this.markedForDeletion = true;
+            if (pos.y > 900) {
+                Body.setPosition(this.body, { x: pos.x, y: 880 });
+                Body.setVelocity(this.body, { x: 0, y: 0 });
             }
         }
 
@@ -1873,28 +1902,23 @@
         document.getElementById('game-over-box').style.display = 'none';
 
         // Static Ground and Platforms
+        // Panels 1 and 3 (the side elevated platforms) are extended all the way outward past the screen edges
         const ground = Bodies.rectangle(720, 930, 1440, 60, { isStatic: true, render: { fillStyle: '#32CD32' } });
-        const plat1 = Bodies.rectangle(250, 650, 300, 30, { isStatic: true });
-        const plat2 = Bodies.rectangle(720, 450, 400, 30, { isStatic: true });
-        const plat3 = Bodies.rectangle(1190, 650, 300, 30, { isStatic: true });
+        const plat1 = Bodies.rectangle(90, 650, 660, 30, { isStatic: true }); // Extended left panel (-240 to 420)
+        const plat2 = Bodies.rectangle(720, 450, 400, 30, { isStatic: true }); // Center elevated platform
+        const plat3 = Bodies.rectangle(1350, 650, 660, 30, { isStatic: true }); // Extended right panel (1020 to 1680)
         
         ground.isGround = true;
         plat1.isGround = true;
         plat2.isGround = true;
         plat3.isGround = true;
-        
-        // Static offscreen guide ledges aligned with side platforms to prevent fall on spawn
-        const spawnLedgeLeft = Bodies.rectangle(-50, 650, 300, 30, { isStatic: true });
-        const spawnLedgeRight = Bodies.rectangle(1490, 650, 300, 30, { isStatic: true });
-        spawnLedgeLeft.isGround = true;
-        spawnLedgeRight.isGround = true;
 
         // Static Boundaries
-        const wallLeft = Bodies.rectangle(-220, 200, 100, 2400, { isStatic: true });
-        const wallRight = Bodies.rectangle(1660, 200, 100, 2400, { isStatic: true });
-        const ceiling = Bodies.rectangle(720, -200, 2200, 50, { isStatic: true });
+        const wallLeft = Bodies.rectangle(-260, 200, 100, 2400, { isStatic: true });
+        const wallRight = Bodies.rectangle(1700, 200, 100, 2400, { isStatic: true });
+        const ceiling = Bodies.rectangle(720, -200, 2400, 50, { isStatic: true });
 
-        const localStaticBodies = [ground, plat1, plat2, plat3, spawnLedgeLeft, spawnLedgeRight, wallLeft, wallRight, ceiling];
+        const localStaticBodies = [ground, plat1, plat2, plat3, wallLeft, wallRight, ceiling];
         Composite.add(engine.world, localStaticBodies);
 
         // Player instance
@@ -2407,10 +2431,11 @@
         ctx.fillStyle = '#32CD32'; 
         ctx.fillRect(0, 900, 1440, 60); 
 
+        // Extended 1st (left) and 3rd (right) panels stretching off past the side borders
         ctx.fillStyle = '#8B4513'; 
-        ctx.fillRect(100, 635, 300, 30); // Plat 1
-        ctx.fillRect(520, 435, 400, 30); // Plat 2
-        ctx.fillRect(1040, 635, 300, 30); // Plat 3
+        ctx.fillRect(-240, 635, 660, 30); // Panel 1 (extended off-screen left to x=420)
+        ctx.fillRect(520, 435, 400, 30);  // Panel 2 (center platform)
+        ctx.fillRect(1020, 635, 660, 30); // Panel 3 (extended off-screen right from x=1020)
     }
 
     function drawOnScreenControls() {
@@ -2491,14 +2516,8 @@
         ctx.textAlign = 'right';
         ctx.fillText(`WAVE ${wave}`, 1400, 40);
         
-        const enemiesLeft = entities.filter(e => 
-            (e.type === 'slime' || e.type === 'zombie' || e.type === 'golem') && 
-            !e.isDying && 
-            !e.markedForDeletion && 
-            e.hp > 0
-        ).length;
         ctx.font = '24px Inter';
-        ctx.fillText(`Enemies: ${enemiesLeft}`, 1400, 75);
+        ctx.fillText(`Enemies: ${livingEnemiesCount}`, 1400, 75);
         ctx.textAlign = 'left';
 
         // Wave Announcement Banner
@@ -2555,34 +2574,35 @@
         if (gameStarted) {
             Engine.update(engine, 1000 / 60);
 
-            entities.forEach(e => {
+            let enemyCount = 0;
+
+            // Single zero-allocation pass: update entities, prune dead ones, and count active enemies
+            for (let i = entities.length - 1; i >= 0; i--) {
+                const e = entities[i];
+                if (e.markedForDeletion) {
+                    Composite.remove(engine.world, e.body);
+                    entities.splice(i, 1);
+                    continue;
+                }
+
                 if (!e.isDying) {
                     e.update();
-                }
-            });
 
-            for (let i = entities.length - 1; i >= 0; i--) {
-                if (entities[i].markedForDeletion) {
-                    Composite.remove(engine.world, entities[i].body);
-                    entities.splice(i, 1);
+                    // Floor boundary check: auto-purge enemies that fell below the world floor
+                    if (e.body && (e.body.position.y > 980 || isNaN(e.body.position.x))) {
+                        e.die();
+                        continue;
+                    }
+
+                    if ((e.type === 'slime' || e.type === 'zombie' || e.type === 'golem') && e.hp > 0) {
+                        enemyCount++;
+                    }
                 }
             }
 
-            const livingEnemies = entities.filter(e => 
-                (e.type === 'slime' || e.type === 'zombie' || e.type === 'golem') && 
-                !e.isDying && 
-                !e.markedForDeletion && 
-                e.hp > 0
-            );
+            livingEnemiesCount = enemyCount;
 
-            // Extra safeguard: auto-purge any living enemy that fell below the world floor
-            livingEnemies.forEach(e => {
-                if (e.body && (e.body.position.y > 980 || isNaN(e.body.position.x))) {
-                    e.die();
-                }
-            });
-
-            if (livingEnemies.length === 0) {
+            if (livingEnemiesCount === 0) {
                 waveTimer++;
                 if (waveTimer === 1) {
                     // Spawn Healing Heart reward after clearing Wave 3, 6, or 9
@@ -2600,8 +2620,14 @@
             }
         }
 
-        particles.forEach(p => p.update());
-        particles = particles.filter(p => p.life > 0);
+        // In-place particle updates without recreating the array each frame
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.update();
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
 
         ctx.save();
         
@@ -2617,11 +2643,23 @@
         
         drawStatic();
         
-        entities.sort((a,b) => (a.type === 'player' ? 1 : -1)).forEach(e => {
-            e.draw(ctx);
-        });
+        // Draw non-player entities first, then player on top (without per-frame array sorting)
+        let playerRef = null;
+        for (let i = 0; i < entities.length; i++) {
+            const e = entities[i];
+            if (e.type === 'player') {
+                playerRef = e;
+            } else {
+                e.draw(ctx);
+            }
+        }
+        if (playerRef) {
+            playerRef.draw(ctx);
+        }
         
-        particles.forEach(p => p.draw(ctx));
+        for (let i = 0; i < particles.length; i++) {
+            particles[i].draw(ctx);
+        }
         
         if (player && player.isDying) {
             playerDeathFade = Math.min(0.65, playerDeathFade + 0.015);
