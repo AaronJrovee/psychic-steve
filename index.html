@@ -18,6 +18,8 @@
             background-color: #0b0f19;
             font-family: 'Inter', sans-serif;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
         }
         #game-container {
             position: relative;
@@ -26,6 +28,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            touch-action: none;
         }
         canvas {
             background-color: #87CEEB; /* Sky blue */
@@ -33,6 +36,7 @@
             max-width: 100%;
             max-height: 100%;
             cursor: crosshair;
+            touch-action: none;
         }
         #ui-layer {
             position: absolute;
@@ -133,7 +137,7 @@
         <!-- Title Screen -->
         <div id="title-screen">
             <h1 class="text-7xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-3">PSYCHIC STEVE</h1>
-            <p class="text-xl text-purple-200 mb-2 font-medium">A / D or Arrows to Move • W or Up to Jump • S to Duck</p>
+            <p class="text-xl text-purple-200 mb-2 font-medium">A / D or Arrows to Move • W or Up to Jump</p>
             <p class="text-sm text-purple-300 mb-6 tracking-wide">HOLD Left Mouse or use Touch Controls to channel psychic waves & fling targets • Release to throw</p>
             <button class="play-btn" onclick="startGame()">PLAY</button>
         </div>
@@ -154,7 +158,7 @@
         bgmInterval: null,
         bgmStep: 0,
         isBgmPlaying: false,
-        noiseBuf: null, // Pre-allocated reusable noise buffer to eliminate GC pauses
+        noiseBuf: null,
 
         init() {
             if (!this.ctx) {
@@ -164,10 +168,9 @@
             if (this.ctx && this.ctx.state === 'suspended') {
                 this.ctx.resume();
             }
-            // Pre-bake reusable noise buffer once
             if (this.ctx && !this.noiseBuf) {
                 const sampleRate = this.ctx.sampleRate;
-                const length = Math.floor(sampleRate * 0.15); // 150ms buffer
+                const length = Math.floor(sampleRate * 0.15);
                 this.noiseBuf = this.ctx.createBuffer(1, length, sampleRate);
                 const data = this.noiseBuf.getChannelData(0);
                 for (let i = 0; i < length; i++) {
@@ -181,55 +184,31 @@
             this.isBgmPlaying = true;
             this.bgmStep = 0;
 
-            // 138 BPM driving groove: 16th notes every ~108.7ms
             const stepDuration = 60 / 138 / 4; 
 
-            // 64-Step Extended Memorable Battle Theme (4 distinct musical sections / chord phases)
-            // Chords: Dm (0-15) -> Bb (16-31) -> Gm (32-47) -> A / C (48-63)
             const bassline64 = [
-                // Section 1: Dm (Steps 0-15) - Driving bounce
                 73.42, 73.42, 146.83, 73.42,  82.41, 73.42, 146.83, 73.42,
                 73.42, 73.42, 146.83, 73.42,  87.31, 73.42, 110.00, 73.42,
-
-                // Section 2: Bb Maj (Steps 16-31) - Ascending lift
                 58.27, 58.27, 116.54, 58.27,  65.41, 58.27, 116.54, 58.27,
                 58.27, 58.27, 116.54, 58.27,  77.78, 58.27, 116.54, 65.41,
-
-                // Section 3: Gm (Steps 32-47) - Gritty momentum
                 49.00, 49.00, 98.00,  49.00,  58.27, 49.00, 98.00,  49.00,
                 49.00, 49.00, 98.00,  49.00,  65.41, 49.00, 87.31, 110.00,
-
-                // Section 4: A Maj / Turnaround (Steps 48-63) - Climactic tension
                 55.00, 55.00, 110.00, 55.00,  69.30, 55.00, 110.00, 55.00,
                 55.00, 55.00, 110.00, 73.42,  82.41, 87.31, 110.00, 130.81
             ];
 
-            // Catchy, melodic lead synth hook with syncopation, call-and-response, and variations
             const leadNotes64 = [
-                // Melody Hook A (0-15): The iconic motif
                 293.66, 0, 293.66, 349.23, 0, 440.00, 0, 392.00,
                 349.23, 0, 293.66, 0,      261.63, 0, 293.66, 0,
-
-                // Melody Lift B (16-31): High energetic counter-melody
                 466.16, 0, 466.16, 523.25, 0, 587.33, 0, 523.25,
                 466.16, 0, 440.00, 0,      392.00, 0, 440.00, 0,
-
-                // Melody Variation C (32-47): Rapid syncopated arpeggio run
                 392.00, 0, 349.23, 392.00, 0, 440.00, 0, 466.16,
                 523.25, 0, 466.16, 440.00, 0, 392.00, 349.23, 0,
-
-                // Melody Climax D (48-63): Tension rise resolving into the loop turnaround
                 440.00, 0, 440.00, 523.25, 0, 554.37, 0, 587.33,
                 659.25, 0, 587.33, 554.37, 0, 440.00, 523.25, 0
             ];
 
-            // Harmonic Pad Chord roots (Hz) providing rich atmosphere behind the lead
-            const chordPadProgression = [
-                220.00, // Dm root 
-                174.61, // Bb root
-                196.00, // G root
-                220.00  // A root
-            ];
+            const chordPadProgression = [220.00, 174.61, 196.00, 220.00];
 
             this.bgmInterval = setInterval(() => {
                 if (!this.ctx || !this.isBgmPlaying) return;
@@ -237,7 +216,6 @@
                 const step = this.bgmStep % 64;
                 const bar = Math.floor(step / 16);
 
-                // 1. Kick Drum (Heavy on beats 0, 4, 8, 12 + occasional 14 fill)
                 const isKick = (step % 4 === 0) || (step % 16 === 14 && bar % 2 === 1);
                 if (isKick) {
                     const kickOsc = this.ctx.createOscillator();
@@ -253,7 +231,6 @@
                     kickOsc.stop(now + 0.15);
                 }
 
-                // 2. Gritty Snare / Hi-Hat Percussion (Uses pre-allocated noise buffer)
                 if (this.noiseBuf) {
                     const hatNoise = this.ctx.createBufferSource();
                     hatNoise.buffer = this.noiseBuf;
@@ -274,7 +251,6 @@
                     hatNoise.start(now);
                 }
 
-                // 3. Rolling Bassline Synth
                 const bassFreq = bassline64[step];
                 if (bassFreq) {
                     const bassOsc = this.ctx.createOscillator();
@@ -299,7 +275,6 @@
                     bassOsc.stop(now + 0.11);
                 }
 
-                // 4. Harmonic Background Pad (played every 8 steps to sustain atmosphere)
                 if (step % 8 === 0) {
                     const padFreq = chordPadProgression[bar];
                     const padOsc = this.ctx.createOscillator();
@@ -324,7 +299,6 @@
                     padOsc.stop(now + 0.7);
                 }
 
-                // 5. Catchy Lead Melody Synth (Square/Saw pulse with vibrato bite)
                 const leadFreq = leadNotes64[step];
                 if (leadFreq > 0) {
                     const leadOsc = this.ctx.createOscillator();
@@ -380,7 +354,6 @@
         playHeal() {
             if (!this.ctx) return;
             const now = this.ctx.currentTime;
-            // Cheerful ascending sparkle chime
             const notes = [440, 554.37, 659.25, 880];
             notes.forEach((freq, idx) => {
                 const osc = this.ctx.createOscillator();
@@ -394,6 +367,22 @@
                 osc.start(now + idx * 0.05);
                 osc.stop(now + idx * 0.05 + 0.22);
             });
+        },
+
+        playChomp() {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.14);
+            gain.gain.setValueAtTime(0.42, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.15);
         },
 
         playExplosion(intensity = 1.0) {
@@ -428,7 +417,6 @@
             if (!this.ctx) return;
             const now = this.ctx.currentTime;
             
-            // Heavy sub drop layer
             const subOsc = this.ctx.createOscillator();
             const subGain = this.ctx.createGain();
             subOsc.type = 'sine';
@@ -441,7 +429,6 @@
             subOsc.start(now);
             subOsc.stop(now + 0.24);
 
-            // Punchy low saw crack
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
             osc.type = 'sawtooth';
@@ -459,29 +446,24 @@
             if (!this.ctx) return;
             const now = this.ctx.currentTime;
 
-            // Deep punchy bass transient impact
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(110, now);
             osc.frequency.exponentialRampToValueAtTime(28, now + 0.13);
-
             gain.gain.setValueAtTime(0.48, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
 
-            // Punchy low distortion crunch
             const crunch = this.ctx.createOscillator();
             const crunchGain = this.ctx.createGain();
             crunch.type = 'sawtooth';
             crunch.frequency.setValueAtTime(75, now);
             crunch.frequency.exponentialRampToValueAtTime(20, now + 0.08);
-
             crunchGain.gain.setValueAtTime(0.35, now);
             crunchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
             osc.connect(gain);
             gain.connect(this.ctx.destination);
-
             crunch.connect(crunchGain);
             crunchGain.connect(this.ctx.destination);
 
@@ -511,8 +493,7 @@
             if (!this.ctx) return;
             const now = this.ctx.currentTime;
             
-            // Dark, ominous low war-horn drone (minor second / tritone tension)
-            const lowFreqs = [58.27, 82.41, 116.54]; // Bb1, E2, Bb2
+            const lowFreqs = [58.27, 82.41, 116.54];
             lowFreqs.forEach((freq, idx) => {
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -537,7 +518,6 @@
                 osc.stop(now + 0.75);
             });
 
-            // Distant metallic impact hit
             const impactOsc = this.ctx.createOscillator();
             const impactGain = this.ctx.createGain();
             impactOsc.type = 'triangle';
@@ -551,13 +531,8 @@
             impactOsc.stop(now + 0.5);
         },
 
-        startPsychicHum() {
-            // Disabled per user request
-        },
-
-        stopPsychicHum() {
-            // Disabled per user request
-        }
+        startPsychicHum() {},
+        stopPsychicHum() {}
     };
 
     // --- MATTER.JS ALIASES ---
@@ -588,41 +563,43 @@
     let entities = [];
     let particles = [];
     let shakeAmount = 0;
-    let livingEnemiesCount = 0; // Cached live enemy count to avoid per-frame array allocations
+    let livingEnemiesCount = 0;
 
     // Strict Mouse State
     const mouse = { x: 0, y: 0, isDown: false };
     
     // Key Tracking
-    const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
+    const keys = { w: false, a: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowRight: false };
 
-    // --- ON-SCREEN TOUCH & JOYSTICK CONTROLS CONFIG ---
-    const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+    // --- DUAL-ZONE FLOATING VIRTUAL STICKS CONFIG ---
+    let isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
 
-    // Movement D-pad buttons (Bottom-Left) - Spread out bottom 3 buttons with extra spacing
-    const onScreenButtons = [
-        { id: 'up', key: 'w', x: 200, y: 680, r: 52, label: '▲', active: false },
-        { id: 'left', key: 'a', x: 75, y: 815, r: 52, label: '◀', active: false },
-        { id: 'down', key: 's', x: 200, y: 815, r: 52, label: '▼', active: false },
-        { id: 'right', key: 'd', x: 325, y: 815, r: 52, label: '▶', active: false }
-    ];
-
-    // Psychic Joystick (Bottom-Right, active for mobile/touch) - Enlarged base and handle
-    const psychicJoystick = {
-        baseX: 1260,
-        baseY: 790,
-        baseRadius: 110,
-        stickX: 1260,
-        stickY: 790,
-        handleRadius: 52,
+    // Movement Floating Stick (Left Screen Half)
+    const moveStick = {
         touchId: null,
         active: false,
-        angle: 0,
-        distanceRatio: 0 // 0 to 1 scaling psychic reach up to 450px
+        baseX: 200,
+        baseY: 780,
+        stickX: 200,
+        stickY: 780,
+        baseRadius: 105,
+        handleRadius: 52,
+        deadzone: 16
     };
 
-    // Active touch bindings
-    const activeTouches = new Map();
+    // Psychic Floating Stick (Right Screen Half)
+    const psychicStick = {
+        touchId: null,
+        active: false,
+        baseX: 1240,
+        baseY: 780,
+        stickX: 1240,
+        stickY: 780,
+        baseRadius: 120,
+        handleRadius: 56,
+        angle: 0,
+        distanceRatio: 0
+    };
 
     function getCanvasCoords(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
@@ -680,26 +657,27 @@
             this.isDying = false;
             this.canBeGrabbed = true;
             this.isEntering = false;
+            this.spawnGraceTimer = 0;
             Composite.add(engine.world, this.body);
             entities.push(this);
         }
 
         takeDamage(amount, sourceBody = null) {
             if (this.hp <= 0 || this.isDying) return;
+            this.spawnGraceTimer = 0;
+            this.isEntering = false;
             this.hp -= amount;
 
-            if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem') {
+            if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem' || this.type === 'maw') {
                 SoundFX.playHit();
                 shakeAmount = Math.max(shakeAmount, Math.min(18, 6 + amount * 0.35));
 
-                // Satisfying knockback applied whenever mobs take damage from collisions, walls, or bombs
                 if (sourceBody) {
                     const sourcePos = sourceBody.position || sourceBody;
                     let dx = this.body.position.x - sourcePos.x;
                     let dy = this.body.position.y - sourcePos.y;
                     const len = Math.hypot(dx, dy) || 1;
                     
-                    // Knock them up and away from the damage source
                     const nx = dx / len;
                     const impulseX = nx * (7 + Math.min(amount * 0.4, 12));
                     const impulseY = -Math.max(6, Math.min(16, 5 + amount * 0.5));
@@ -728,6 +706,7 @@
             if (this.type === 'slime') expColor = '#32cd32';
             else if (this.type === 'zombie') expColor = '#2E8B57';
             else if (this.type === 'golem') expColor = '#708090';
+            else if (this.type === 'maw') expColor = '#6b21a8';
             else if (this.type === 'box') expColor = '#8B4513';
             else if (this.type === 'player') expColor = '#ff2222';
             else if (this.type === 'bomb') expColor = '#FF4500';
@@ -767,29 +746,21 @@
             });
             super(body, 100, 'player');
             this.animTimer = 0;
-            this.isDucking = false;
             this.canJump = false;
             this.grabbedEntity = null;
             this.invulnerableTimer = 0;
             this.grabTimer = 0;
-            this.maxGrabDuration = 120; // Base 2 seconds at 60 FPS
+            this.maxGrabDuration = 120;
         }
 
         takeDamage(amount, sourceBody = null) {
             if (this.invulnerableTimer > 0 && amount < 1000) return;
             
-            // Ducking provides defensive bracing: cuts incoming damage by 50%
-            let finalAmount = amount;
-            if (this.isDucking && amount < 1000) {
-                finalAmount = Math.max(1, Math.round(amount * 0.5));
-            }
-
-            super.takeDamage(finalAmount, sourceBody);
+            super.takeDamage(amount, sourceBody);
             if (!this.isDying) {
                 SoundFX.playPlayerHurt();
                 this.invulnerableTimer = 55;
-                // Add screen shake proportional to damage taken
-                shakeAmount = Math.max(shakeAmount, Math.min(28, 12 + finalAmount * 0.5));
+                shakeAmount = Math.max(shakeAmount, Math.min(28, 12 + amount * 0.5));
             }
         }
 
@@ -828,8 +799,6 @@
             let vx = this.body.velocity.x;
             let vy = this.body.velocity.y;
 
-            this.isDucking = keys.s || keys.ArrowDown;
-
             if (keys.a || keys.ArrowLeft) {
                 vx = -moveSpeed;
                 this.animTimer += 0.2;
@@ -840,8 +809,6 @@
                 vx *= 0.5; 
                 this.animTimer = 0;
             }
-
-            if (this.isDucking) vx *= 0.3; 
 
             if ((keys.w || keys.ArrowUp) && this.canJump) {
                 vy = jumpVelocityY;
@@ -854,17 +821,12 @@
                 vy += 0.65;
             }
 
-            // Fast fall acceleration when ducking in mid-air
-            if (this.isDucking && !this.canJump) {
-                vy += 1.2;
-            }
-
             // ONLY slow fall when the mouse is physically held down
             if (mouse.isDown && vy > 1.8) {
                 vy = 1.8;
             }
 
-            // Clamp maximum upward velocity against anomalous physics impulses
+            // Clamp maximum upward velocity
             if (vy < -26) {
                 vy = -26;
             }
@@ -900,28 +862,60 @@
                 Body.setPosition(this.body, { x: currentX, y: currentY });
             }
 
-            // Psychic interaction logic while holding mouse
+            // Psychic interaction logic with intelligent auto-locking
             const maxGrabRadius = 450;
             if (mouse.isDown) {
                 if (!this.grabbedEntity) {
-                    const bodiesUnderCursor = Query.point(
-                        entities.map(e => e.body),
-                        { x: mouse.x, y: mouse.y }
-                    );
+                    let bestCandidate = null;
+                    let bestScore = -Infinity;
 
-                    for (let b of bodiesUnderCursor) {
-                        if (b.entity && b.entity !== this && !b.entity.isDying && b.entity.canBeGrabbed !== false) {
-                            const dist = Vector.magnitude(Vector.sub(b.position, this.body.position));
-                            if (dist <= maxGrabRadius) {
-                                this.grabbedEntity = b.entity;
-                                this.grabbedEntity.body.isThrown = true;
-                                this.grabbedEntity.isEntering = false;
-                                // Grab duration is inversely proportional to weight (heavier = harder to hold)
-                                const w = this.grabbedEntity.weight || 1.0;
-                                this.grabTimer = Math.max(30, Math.round(this.maxGrabDuration / Math.sqrt(w)));
-                                break;
-                            }
+                    const aimVec = { x: mouse.x - this.body.position.x, y: mouse.y - this.body.position.y };
+                    const aimDist = Math.hypot(aimVec.x, aimVec.y) || 1;
+                    const aimNorm = { x: aimVec.x / aimDist, y: aimVec.y / aimDist };
+
+                    for (let i = 0; i < entities.length; i++) {
+                        const ent = entities[i];
+                        if (ent === this || ent.isDying || ent.markedForDeletion || ent.canBeGrabbed === false) continue;
+
+                        const b = ent.body;
+                        const toEnt = { x: b.position.x - this.body.position.x, y: b.position.y - this.body.position.y };
+                        const distToSteve = Math.hypot(toEnt.x, toEnt.y);
+
+                        if (distToSteve > maxGrabRadius) continue;
+
+                        // Dot product along Steve's aiming ray
+                        const projAlongAim = toEnt.x * aimNorm.x + toEnt.y * aimNorm.y;
+
+                        // Lateral perpendicular distance from Steve's psychic ray
+                        const perpDist = Math.abs(toEnt.x * (-aimNorm.y) + toEnt.y * aimNorm.x);
+
+                        // Distance directly from current mouse/reticle position
+                        const distToCursor = Math.hypot(b.position.x - mouse.x, b.position.y - mouse.y);
+
+                        // If user aims roughly in the direction (projAlongAim > 0), prioritize targets even if they overshoot
+                        let score = 0;
+                        if (projAlongAim > 10 && perpDist < 140) {
+                            score = 1000 - perpDist * 3.5 - Math.abs(distToSteve - Math.min(aimDist, maxGrabRadius)) * 0.8;
+                        } else if (distToCursor < 120) {
+                            score = 800 - distToCursor * 3.5;
                         }
+
+                        if (score > bestScore && score > 200) {
+                            bestScore = score;
+                            bestCandidate = ent;
+                        }
+                    }
+
+                    if (bestCandidate) {
+                        this.grabbedEntity = bestCandidate;
+                        this.grabbedEntity.body.isThrown = true;
+                        this.grabbedEntity.isEntering = false;
+                        this.grabbedEntity.spawnGraceTimer = 0;
+                        if (this.grabbedEntity.type === 'bomb') {
+                            this.grabbedEntity.flungByPlayer = true;
+                        }
+                        const w = this.grabbedEntity.weight || 1.0;
+                        this.grabTimer = Math.max(30, Math.round(this.maxGrabDuration / Math.sqrt(w)));
                     }
                 }
 
@@ -933,16 +927,13 @@
                         const b = this.grabbedEntity.body;
                         const distFromSteve = Vector.magnitude(Vector.sub(b.position, this.body.position));
 
-                        // Auto-throw if target is outside psychic radius
                         if (distFromSteve > maxGrabRadius) {
                             this.releaseGrip(true);
                             return;
                         }
 
-                        // Decrement grab duration timer (2 second limit)
                         this.grabTimer--;
                         if (this.grabTimer <= 0) {
-                            // Drop and prevent re-grab until it lands on the ground
                             this.grabbedEntity.canBeGrabbed = false;
                             this.releaseGrip(false);
                             return;
@@ -958,7 +949,7 @@
                         }
 
                         const force = Vector.sub(target, b.position);
-                        const weightFactor = Math.max(0.4, 1.4 / Math.sqrt(this.grabbedEntity.weight || 1));
+                        const weightFactor = Math.max(0.25, 1.4 / Math.sqrt(this.grabbedEntity.weight || 1));
                         Body.setVelocity(b, {
                             x: Math.max(-25, Math.min(25, force.x * 0.28 * weightFactor)),
                             y: Math.max(-25, Math.min(25, force.y * 0.28 * weightFactor))
@@ -990,7 +981,6 @@
         draw(ctx) {
             if (this.markedForDeletion) return;
             
-            // Invulnerability flashing
             if (this.invulnerableTimer > 0 && Math.floor(this.invulnerableTimer / 4) % 2 === 0) {
                 this.drawHpBarUI();
                 return;
@@ -999,7 +989,6 @@
             const pos = this.body.position;
             const maxGrabRadius = 450;
 
-            // ONLY render psychic beams, reticle, and tendrils when mouse is physically held down
             if (mouse.isDown) {
                 ctx.save();
 
@@ -1053,6 +1042,15 @@
                     const pulse = (Date.now() % 1000) / 1000 * 20;
                     ctx.strokeStyle = 'rgba(217, 70, 239, 0.65)';
                     ctx.strokeRect(targetX - 32 - pulse, targetY - 32 - pulse, 64 + pulse * 2, 64 + pulse * 2);
+
+                    // Diamond auto-lock indicator
+                    ctx.save();
+                    ctx.translate(targetX, targetY);
+                    ctx.rotate((Date.now() % 2400) / 2400 * Math.PI * 2);
+                    ctx.strokeStyle = '#f0abfc';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-24, -24, 48, 48);
+                    ctx.restore();
                 } else {
                     ctx.fillStyle = '#a020f0';
                     ctx.beginPath();
@@ -1078,11 +1076,9 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            const duckOffset = this.isDucking ? 30 : 0;
-            
             // Head
             ctx.beginPath();
-            ctx.arc(0, -45 + duckOffset, 18, 0, Math.PI * 2);
+            ctx.arc(0, -45, 18, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.fill();
             ctx.stroke();
@@ -1098,52 +1094,41 @@
                 eyeLookX = (this.body.velocity.x > 0 ? 1 : -1) * 3;
             }
 
-            // Eye whites & pupils
+            // Pupils
             ctx.fillStyle = '#000000';
-            // Left eye
             ctx.beginPath();
-            ctx.arc(-6 + eyeLookX, -46 + duckOffset + eyeLookY, 2.8, 0, Math.PI * 2);
+            ctx.arc(-6 + eyeLookX, -46 + eyeLookY, 2.8, 0, Math.PI * 2);
             ctx.fill();
-            // Right eye
             ctx.beginPath();
-            ctx.arc(6 + eyeLookX, -46 + duckOffset + eyeLookY, 2.8, 0, Math.PI * 2);
+            ctx.arc(6 + eyeLookX, -46 + eyeLookY, 2.8, 0, Math.PI * 2);
             ctx.fill();
 
             // Torso
             ctx.beginPath();
-            ctx.moveTo(0, -27 + duckOffset);
+            ctx.moveTo(0, -27);
             ctx.lineTo(0, 22);
             ctx.stroke();
 
             let armSwing = Math.sin(this.animTimer) * 22;
             let legSwing = Math.cos(this.animTimer) * 22;
-            
-            if (this.isDucking) {
-                armSwing = 0;
-                legSwing = 0;
-            }
 
             // Arms: only point towards cursor when psychic power is physically held
             ctx.beginPath();
-            ctx.moveTo(0, -15 + duckOffset); 
+            ctx.moveTo(0, -15); 
             if (mouse.isDown) {
                 const angle = Math.atan2(mouse.y - pos.y, mouse.x - pos.x);
                 ctx.lineTo(Math.cos(angle) * 37, Math.sin(angle) * 37);
             } else {
-                ctx.lineTo(-22 + armSwing, 7 + duckOffset);
-                ctx.moveTo(0, -15 + duckOffset);
-                ctx.lineTo(22 - armSwing, 7 + duckOffset);
+                ctx.lineTo(-22 + armSwing, 7);
+                ctx.moveTo(0, -15);
+                ctx.lineTo(22 - armSwing, 7);
             }
             ctx.stroke();
 
             // Legs
             ctx.beginPath();
             ctx.moveTo(0, 22); 
-            if (this.isDucking) {
-                ctx.lineTo(-22, 45);
-                ctx.moveTo(0, 22);
-                ctx.lineTo(22, 45);
-            } else if (!this.canJump) { 
+            if (!this.canJump) { 
                 ctx.lineTo(-15, 45);
                 ctx.lineTo(-7, 60);
                 ctx.moveTo(0, 22);
@@ -1175,7 +1160,6 @@
 
     class Slime extends Entity {
         constructor(x, y, tier = 0) {
-            // tier: 0 = normal (20 HP), 1 = medium (50 HP), 2 = large (100 HP), 3 = Boss (200 HP)
             const configs = [
                 { r: 25, hp: 20, weight: 0.8 },
                 { r: 40, hp: 50, weight: 1.4 },
@@ -1201,29 +1185,33 @@
         update() {
             const pos = this.body.position;
 
-            // Mark entering complete once they reach visible arena bounds
+            if (this.spawnGraceTimer > 0) {
+                this.spawnGraceTimer--;
+            }
+
             if (this.isEntering) {
                 this.enteringTimer++;
                 if (pos.x >= 60 && pos.x <= 1380) {
                     this.isEntering = false;
+                    this.spawnGraceTimer = 0;
                 } else if (this.enteringTimer > 300) {
-                    // Failsafe: if stuck off-screen for >5 seconds, force into arena or purge
                     if (pos.x < 60) Matter.Body.setPosition(this.body, { x: 80, y: Math.min(pos.y, 820) });
                     else if (pos.x > 1380) Matter.Body.setPosition(this.body, { x: 1360, y: Math.min(pos.y, 820) });
                     this.isEntering = false;
+                    this.spawnGraceTimer = 0;
                 }
             }
 
-            // Universal out-of-bounds check (falls into void or launched way out of map)
-            if (pos.y > 1000 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590))) {
-                this.die();
-                return;
+            if (this.spawnGraceTimer <= 0) {
+                if (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590))) {
+                    this.die();
+                    return;
+                }
             }
 
             const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
             if (isMidAir) return;
 
-            // If slime is off the canvas viewport, force direction toward center of the screen
             if (pos.x < 60) this.dir = 1;
             else if (pos.x > 1380) this.dir = -1;
 
@@ -1252,7 +1240,6 @@
             SoundFX.playExplosion(0.6 + this.tier * 0.3);
             createExplosion(pos.x, pos.y, '#32cd32', 30 + this.tier * 15);
 
-            // Boss Splitting Logic
             if (this.tier > 0) {
                 const nextTier = this.tier - 1;
                 for (let i = 0; i < 2; i++) {
@@ -1284,7 +1271,6 @@
             ctx.lineWidth = 3 + this.tier;
             ctx.stroke();
 
-            // Eyes
             const eyeSize = Math.max(3, 3 + this.tier * 2.5);
             const eyeSpacing = Math.max(8, 8 + this.tier * 6);
             ctx.fillStyle = 'black';
@@ -1298,7 +1284,6 @@
             ctx.arc(-eyeSpacing - 3, -7, Math.max(2, eyeSize * 0.5), 0, Math.PI * 2);
             ctx.fill();
 
-            // Boss Crown
             if (this.isBoss) {
                 ctx.fillStyle = '#facc15';
                 ctx.strokeStyle = '#ca8a04';
@@ -1339,23 +1324,28 @@
         update() {
             const pos = this.body.position;
 
-            // Mark entering complete once they reach visible arena bounds
+            if (this.spawnGraceTimer > 0) {
+                this.spawnGraceTimer--;
+            }
+
             if (this.isEntering) {
                 this.enteringTimer++;
                 if (pos.x >= 60 && pos.x <= 1380) {
                     this.isEntering = false;
+                    this.spawnGraceTimer = 0;
                 } else if (this.enteringTimer > 300) {
-                    // Failsafe: if stuck off-screen for >5 seconds, force into arena or purge
                     if (pos.x < 60) Matter.Body.setPosition(this.body, { x: 80, y: Math.min(pos.y, 820) });
                     else if (pos.x > 1380) Matter.Body.setPosition(this.body, { x: 1360, y: Math.min(pos.y, 820) });
                     this.isEntering = false;
+                    this.spawnGraceTimer = 0;
                 }
             }
 
-            // Universal out-of-bounds check (falls into void or launched way out of map)
-            if (pos.y > 1000 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590))) {
-                this.die();
-                return;
+            if (this.spawnGraceTimer <= 0) {
+                if (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590))) {
+                    this.die();
+                    return;
+                }
             }
 
             const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
@@ -1363,7 +1353,6 @@
 
             if (!player || player.isDying) return;
 
-            // March directly toward player or arena center
             const px = player.body.position.x;
             const dir = px > pos.x ? 1 : -1;
             this.facing = dir;
@@ -1383,7 +1372,6 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            // Use persistent facing direction to prevent flickering from micro-jitter
             if (Math.abs(this.body.velocity.x) > 0.3) {
                 this.facing = this.body.velocity.x > 0 ? 1 : -1;
             }
@@ -1430,12 +1418,12 @@
                 friction: 0.3,
                 density: 0.005
             });
-            super(body, 120, 'golem', 3.2); // Heavy mass and 120 HP
+            super(body, 120, 'golem', 3.2);
             this.animTimer = 0;
             this.facing = 1;
             this.enteringTimer = 0;
             this.heldMob = null;
-            this.throwCooldown = 150; // Ticks between throws
+            this.throwCooldown = 150;
             this.windupTimer = 0;
             this.searchTimer = 0;
         }
@@ -1443,21 +1431,29 @@
         update() {
             const pos = this.body.position;
 
+            if (this.spawnGraceTimer > 0) {
+                this.spawnGraceTimer--;
+            }
+
             if (this.isEntering) {
                 this.enteringTimer++;
                 if (pos.x >= 70 && pos.x <= 1370) {
                     this.isEntering = false;
+                    this.spawnGraceTimer = 0;
                 } else if (this.enteringTimer > 300) {
                     if (pos.x < 70) Matter.Body.setPosition(this.body, { x: 90, y: Math.min(pos.y, 820) });
                     else if (pos.x > 1370) Matter.Body.setPosition(this.body, { x: 1350, y: Math.min(pos.y, 820) });
                     this.isEntering = false;
+                    this.spawnGraceTimer = 0;
                 }
             }
 
-            if (pos.y > 1000 || pos.y < -400 || (!this.isEntering && (pos.x < -180 || pos.x > 1620))) {
-                if (this.heldMob) this.heldMob = null;
-                this.die();
-                return;
+            if (this.spawnGraceTimer <= 0) {
+                if (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -180 || pos.x > 1620))) {
+                    if (this.heldMob) this.heldMob = null;
+                    this.die();
+                    return;
+                }
             }
 
             const isAirborne = Math.abs(this.body.velocity.y) > 1.8 || (player && player.grabbedEntity === this);
@@ -1477,7 +1473,6 @@
 
             if (this.throwCooldown > 0) this.throwCooldown--;
 
-            // If carrying a mob, position it overhead and aim at player
             if (this.heldMob) {
                 if (this.heldMob.isDying || this.heldMob.markedForDeletion || (player && player.grabbedEntity === this.heldMob)) {
                     this.heldMob = null;
@@ -1490,7 +1485,6 @@
                     Body.setVelocity(this.heldMob.body, { x: 0, y: 0 });
 
                     this.windupTimer++;
-                    // Wind up and throw!
                     if (this.windupTimer >= 50) {
                         const targetPos = player.body.position;
                         const throwAngle = Math.atan2(targetPos.y - (pos.y - 75), targetPos.x - pos.x);
@@ -1503,13 +1497,12 @@
                         this.heldMob.body.isThrown = true;
                         this.heldMob = null;
                         this.windupTimer = 0;
-                        this.throwCooldown = 180; // Reset cooldown
+                        this.throwCooldown = 180;
                         SoundFX.playThrow();
                         shakeAmount = Math.max(shakeAmount, 10);
                     }
                 }
             } else if (this.throwCooldown <= 0 && !this.isEntering) {
-                // Throttle search to every 10 frames instead of every frame
                 this.searchTimer = (this.searchTimer || 0) + 1;
                 if (this.searchTimer % 10 === 0) {
                     for (let i = 0; i < entities.length; i++) {
@@ -1528,7 +1521,6 @@
                 }
             }
 
-            // March toward Steve
             const speed = this.heldMob ? 1.0 : 1.6;
             Body.setVelocity(this.body, { x: dir * speed, y: this.body.velocity.y });
             this.animTimer += 0.08;
@@ -1549,12 +1541,10 @@
             const dir = this.facing;
             const walkCycle = Math.sin(this.animTimer);
 
-            // Golem colors
             const rockDark = '#475569';
             const rockMid = '#64748b';
             const rockHighlight = '#94a3b8';
 
-            // Tiny stubby legs
             ctx.fillStyle = rockDark;
             ctx.strokeStyle = '#1e293b';
             ctx.lineWidth = 4;
@@ -1571,7 +1561,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // Massive muscular torso
+            // Torso
             ctx.fillStyle = rockMid;
             ctx.beginPath();
             ctx.moveTo(-36, 38);
@@ -1584,7 +1574,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // Rock cracks & chest details
+            // Rock cracks
             ctx.strokeStyle = rockHighlight;
             ctx.lineWidth = 2.5;
             ctx.beginPath();
@@ -1594,7 +1584,7 @@
             ctx.lineTo(8, 12);
             ctx.stroke();
 
-            // Broad head sunken into shoulders
+            // Head
             ctx.fillStyle = rockDark;
             ctx.strokeStyle = '#1e293b';
             ctx.lineWidth = 3;
@@ -1603,7 +1593,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // Glowing amber/red eye slits
+            // Eyes
             ctx.fillStyle = '#f59e0b';
             ctx.shadowColor = '#f59e0b';
             ctx.shadowBlur = 10;
@@ -1611,13 +1601,12 @@
             ctx.fillRect(2 + dir * 10, -41, 6, 4);
             ctx.shadowBlur = 0;
 
-            // Huge beefy muscular arms
+            // Arms
             ctx.fillStyle = rockMid;
             ctx.strokeStyle = '#1e293b';
             ctx.lineWidth = 4;
 
             if (this.heldMob) {
-                // Arms hoisted straight overhead holding the victim
                 ctx.beginPath();
                 ctx.roundRect(-42, -65, 20, 48, 8);
                 ctx.fill();
@@ -1628,7 +1617,6 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // Windup glowing tremor indicator
                 if (this.windupTimer > 25) {
                     ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
                     ctx.beginPath();
@@ -1636,30 +1624,25 @@
                     ctx.fill();
                 }
             } else {
-                // Heavy resting/swinging beefy arms
                 const armOffset = walkCycle * 10;
 
-                // Back arm
                 ctx.beginPath();
                 ctx.roundRect(-46, -18 - armOffset, 20, 52, 10);
                 ctx.fill();
                 ctx.stroke();
 
-                // Boulder fist
                 ctx.fillStyle = rockDark;
                 ctx.beginPath();
                 ctx.arc(-36, 36 - armOffset, 14, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
-                // Front arm
                 ctx.fillStyle = rockMid;
                 ctx.beginPath();
                 ctx.roundRect(26, -18 + armOffset, 20, 52, 10);
                 ctx.fill();
                 ctx.stroke();
 
-                // Front fist
                 ctx.fillStyle = rockDark;
                 ctx.beginPath();
                 ctx.arc(36, 36 + armOffset, 14, 0, Math.PI * 2);
@@ -1669,6 +1652,463 @@
 
             ctx.restore();
             this.drawHpBar(ctx, 65);
+        }
+    }
+
+    class Maw extends Entity {
+        constructor(x, y) {
+            const body = Bodies.circle(x, y, 42, {
+                restitution: 0.35,
+                friction: 0.05,
+                density: 0.003
+            });
+            super(body, 80, 'maw', 2.0);
+            this.radius = 42;
+            this.jawTimer = Math.random() * Math.PI * 2;
+            this.isOpen = false;
+            this.facing = 1;
+            this.enteringTimer = 0;
+            this.chompCooldown = 0;
+        }
+
+        update() {
+            const pos = this.body.position;
+
+            if (this.spawnGraceTimer > 0) {
+                this.spawnGraceTimer--;
+            }
+
+            if (this.isEntering) {
+                this.enteringTimer++;
+                if (pos.x >= 70 && pos.x <= 1370) {
+                    this.isEntering = false;
+                    this.spawnGraceTimer = 0;
+                } else if (this.enteringTimer > 300) {
+                    if (pos.x < 70) Matter.Body.setPosition(this.body, { x: 90, y: Math.min(pos.y, 820) });
+                    else if (pos.x > 1370) Matter.Body.setPosition(this.body, { x: 1350, y: Math.min(pos.y, 820) });
+                    this.isEntering = false;
+                    this.spawnGraceTimer = 0;
+                }
+            }
+
+            if (this.spawnGraceTimer <= 0) {
+                if (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -180 || pos.x > 1620))) {
+                    this.die();
+                    return;
+                }
+            }
+
+            // Jaw animation cycle
+            this.jawTimer += 0.09;
+            const jawCycle = Math.sin(this.jawTimer);
+            this.isOpen = jawCycle > 0.05;
+
+            // When mouth is open it is featherweight (easy to lift).
+            // When mouth is closed it becomes heavy and dense.
+            this.weight = this.isOpen ? 0.85 : 3.8;
+
+            if (this.chompCooldown > 0) {
+                this.chompCooldown--;
+            }
+
+            // Devour items in path without damaging self (boxes, bombs)
+            if (this.isOpen) {
+                for (let i = 0; i < entities.length; i++) {
+                    const e = entities[i];
+                    if (e && !e.isDying && !e.markedForDeletion && (e.type === 'box' || e.type === 'bomb')) {
+                        const distToItem = Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y);
+                        if (distToItem < this.radius + 32) {
+                            e.markedForDeletion = true;
+                            e.isDying = true;
+                            SoundFX.playChomp();
+                            shakeAmount = Math.max(shakeAmount, 8);
+                            createExplosion(e.body.position.x, e.body.position.y, '#111827', 15);
+                            createExplosion(pos.x, pos.y, '#9333ea', 12);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            const isMidAir = Math.abs(this.body.velocity.y) > 1.8 || this.body.isThrown || (player && player.grabbedEntity === this);
+            if (isMidAir) return;
+
+            if (!player || player.isDying) return;
+
+            const px = player.body.position.x;
+            const py = player.body.position.y;
+            this.facing = px > pos.x ? 1 : -1;
+
+            // Chomping movement towards Steve with rhythmic forward leaps
+            const chompImpulse = this.isOpen ? 3.6 : 1.4;
+            const vy = (py < pos.y - 40 && Math.random() < 0.04) ? -7 : this.body.velocity.y;
+            Body.setVelocity(this.body, { x: this.facing * chompImpulse, y: vy });
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+
+            const dir = this.facing;
+            const jawCycle = Math.max(0, Math.sin(this.jawTimer));
+            const openAngle = jawCycle * 0.48;
+
+            // Outer void glow aura
+            ctx.fillStyle = 'rgba(76, 29, 149, 0.25)';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius + 8 + jawCycle * 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Upper Jaw (Pitch-black body)
+            ctx.save();
+            ctx.rotate(-openAngle * dir);
+            ctx.fillStyle = '#09090b';
+            ctx.strokeStyle = '#3b0764';
+            ctx.lineWidth = 3.5;
+
+            ctx.beginPath();
+            if (dir === 1) {
+                ctx.arc(0, 0, this.radius, Math.PI, 0, false);
+            } else {
+                ctx.arc(0, 0, this.radius, 0, Math.PI, false);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Jagged Upper Teeth
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            const teethCount = 4;
+            const step = (this.radius * 1.7) / teethCount;
+            for (let i = 0; i < teethCount; i++) {
+                const tx = -this.radius * 0.85 + i * step;
+                ctx.moveTo(tx, 0);
+                ctx.lineTo(tx + step * 0.5, 12);
+                ctx.lineTo(tx + step, 0);
+            }
+            ctx.fill();
+
+            // Glowing Slitted Eye on upper skull
+            const eyeX = dir * 10;
+            const eyeY = -18;
+            ctx.fillStyle = '#eab308';
+            ctx.beginPath();
+            ctx.ellipse(eyeX, eyeY, 8, 4, (dir * 25 * Math.PI) / 180, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Slitted pupil
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.ellipse(eyeX + dir * 1.5, eyeY, 6, 1.8, (dir * 25 * Math.PI) / 180, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Lower Jaw
+            ctx.save();
+            ctx.rotate(openAngle * dir);
+            ctx.fillStyle = '#09090b';
+            ctx.strokeStyle = '#3b0764';
+            ctx.lineWidth = 3.5;
+
+            ctx.beginPath();
+            if (dir === 1) {
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            } else {
+                ctx.arc(0, 0, this.radius, Math.PI, 0, false);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Jagged Lower Teeth
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            for (let i = 0; i < teethCount; i++) {
+                const tx = -this.radius * 0.85 + i * step;
+                ctx.moveTo(tx, 0);
+                ctx.lineTo(tx + step * 0.5, -12);
+                ctx.lineTo(tx + step, 0);
+            }
+            ctx.fill();
+            ctx.restore();
+
+            // Dark inner mouth void when open
+            if (this.isOpen) {
+                ctx.fillStyle = 'rgba(147, 51, 234, 0.4)';
+                ctx.beginPath();
+                ctx.arc(dir * 6, 0, 10 * jawCycle, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+            this.drawHpBar(ctx, 55);
+        }
+    }
+
+    class SpikeBoss extends Entity {
+        constructor(x, y) {
+            // Main central boss body
+            const body = Bodies.circle(x, y, 65, {
+                inertia: Infinity,
+                frictionAir: 0.08,
+                density: 0.008
+            });
+            super(body, 250, 'spike_boss', 9.0);
+            this.radius = 65;
+            this.canBeGrabbed = false;
+            this.isEntering = false;
+            this.angle = 0;
+            this.rotationSpeed = 0.038;
+            this.chainLength = 175;
+            this.hitCooldown = 0;
+            this.hoverTimer = 0;
+
+            // Swinging heavy satellite flail
+            const flailX = x + Math.cos(this.angle) * this.chainLength;
+            const flailY = y + Math.sin(this.angle) * this.chainLength;
+            const flailBody = Bodies.circle(flailX, flailY, 32, {
+                density: 0.008,
+                restitution: 0.4,
+                friction: 0.1
+            });
+            flailBody.isFlail = true;
+            this.flailEntity = new Entity(flailBody, 99999, 'flail', 4.5);
+            this.flailEntity.canBeGrabbed = true;
+            this.flailEntity.bossParent = this;
+        }
+
+        takeDamage(amount, sourceBody = null) {
+            // Central core is immune unless hit by its own flail
+            if (sourceBody && sourceBody.isFlail) {
+                if (this.hitCooldown <= 0) {
+                    this.hitCooldown = 30;
+                    this.hp -= amount;
+                    SoundFX.playHit();
+                    SoundFX.playExplosion(0.8);
+                    shakeAmount = Math.max(shakeAmount, 22);
+                    createExplosion(this.body.position.x, this.body.position.y, '#f59e0b', 25);
+                    createExplosion(this.body.position.x, this.body.position.y, '#e11d48', 20);
+
+                    if (this.hp <= 0) {
+                        this.hp = 0;
+                        this.die();
+                    }
+                }
+            }
+        }
+
+        die(sourceBody = null) {
+            if (this.isDying) return;
+            if (this.flailEntity && !this.flailEntity.isDying) {
+                this.flailEntity.die();
+            }
+            SoundFX.playExplosion(2.0);
+            shakeAmount = 35;
+            super.die(sourceBody);
+        }
+
+        update() {
+            if (this.isDying) return;
+
+            const pos = this.body.position;
+            if (this.hitCooldown > 0) this.hitCooldown--;
+
+            // Hover and track player smoothly across upper arena
+            this.hoverTimer += 0.03;
+            let targetX = 720;
+            let targetY = 330 + Math.sin(this.hoverTimer) * 60;
+            if (player && !player.isDying) {
+                targetX = Math.max(260, Math.min(1180, player.body.position.x));
+            }
+
+            const hoverDx = (targetX - pos.x) * 0.025;
+            const hoverDy = (targetY - pos.y) * 0.025;
+            Body.setVelocity(this.body, { x: hoverDx, y: hoverDy });
+
+            // Swing satellite flail in continuous orbit around the boss
+            this.angle += this.rotationSpeed;
+            if (this.flailEntity && !this.flailEntity.isDying) {
+                const fb = this.flailEntity.body;
+
+                // Natural target orbit position
+                const idealFlailX = pos.x + Math.cos(this.angle) * this.chainLength;
+                const idealFlailY = pos.y + Math.sin(this.angle) * this.chainLength;
+
+                // When not being held/dragged by psychic power, orbit tightly
+                const isHeld = player && player.grabbedEntity === this.flailEntity;
+                if (!isHeld) {
+                    const toIdealX = idealFlailX - fb.position.x;
+                    const toIdealY = idealFlailY - fb.position.y;
+                    Body.setVelocity(fb, {
+                        x: fb.velocity.x * 0.8 + toIdealX * 0.12,
+                        y: fb.velocity.y * 0.8 + toIdealY * 0.12
+                    });
+                } else {
+                    // Pull back towards tether radius if stretched too far
+                    const distToBoss = Math.hypot(fb.position.x - pos.x, fb.position.y - pos.y);
+                    if (distToBoss > this.chainLength * 1.6) {
+                        const pullAngle = Math.atan2(pos.y - fb.position.y, pos.x - fb.position.x);
+                        Body.applyForce(fb, fb.position, {
+                            x: Math.cos(pullAngle) * 0.08,
+                            y: Math.sin(pullAngle) * 0.08
+                        });
+                    }
+                }
+
+                // Check collision between heavy flail and central core
+                const distToCore = Math.hypot(fb.position.x - pos.x, fb.position.y - pos.y);
+                if (distToCore < this.radius + 32) {
+                    const flailSpeed = Math.hypot(fb.velocity.x, fb.velocity.y);
+                    if (flailSpeed > 3.5 || isHeld) {
+                        this.takeDamage(35, fb);
+                        // Bounce the flail outward after successful hit
+                        const bounceAngle = Math.atan2(fb.position.y - pos.y, fb.position.x - pos.x);
+                        Body.setVelocity(fb, {
+                            x: Math.cos(bounceAngle) * 16,
+                            y: Math.sin(bounceAngle) * 16
+                        });
+                    }
+                }
+            }
+
+            // Spike contact with boxes and bombs destroys them without self-damage
+            for (let i = 0; i < entities.length; i++) {
+                const ent = entities[i];
+                if (ent && !ent.isDying && !ent.markedForDeletion && (ent.type === 'box' || ent.type === 'bomb')) {
+                    const d = Math.hypot(ent.body.position.x - pos.x, ent.body.position.y - pos.y);
+                    if (d < this.radius + 30) {
+                        ent.markedForDeletion = true;
+                        ent.isDying = true;
+                        SoundFX.playExplosion(0.7);
+                        createExplosion(ent.body.position.x, ent.body.position.y, '#94a3b8', 20);
+                    }
+                }
+            }
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+
+            // Draw chain links to flail
+            if (this.flailEntity && !this.flailEntity.isDying) {
+                const fpos = this.flailEntity.body.position;
+                const linkCount = 8;
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(fpos.x, fpos.y);
+                ctx.stroke();
+
+                for (let i = 1; i < linkCount; i++) {
+                    const lx = pos.x + (fpos.x - pos.x) * (i / linkCount);
+                    const ly = pos.y + (fpos.y - pos.y) * (i / linkCount);
+                    ctx.fillStyle = '#64748b';
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Draw swinging faceless spike flail
+                ctx.save();
+                ctx.translate(fpos.x, fpos.y);
+                const spikeCountFlail = 8;
+                for (let i = 0; i < spikeCountFlail; i++) {
+                    const ang = (i / spikeCountFlail) * Math.PI * 2 + this.angle * 2;
+                    ctx.fillStyle = '#334155';
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(ang - 0.25) * 28, Math.sin(ang - 0.25) * 28);
+                    ctx.lineTo(Math.cos(ang) * 48, Math.sin(ang) * 48);
+                    ctx.lineTo(Math.cos(ang + 0.25) * 28, Math.sin(ang + 0.25) * 28);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, 32, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Draw Central Spike Core
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+
+            // Spikes around central body
+            const spikeCount = 12;
+            for (let i = 0; i < spikeCount; i++) {
+                const ang = (i / spikeCount) * Math.PI * 2 + this.angle;
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(ang - 0.2) * (this.radius - 2), Math.sin(ang - 0.2) * (this.radius - 2));
+                ctx.lineTo(Math.cos(ang) * (this.radius + 32), Math.sin(ang) * (this.radius + 32));
+                ctx.lineTo(Math.cos(ang + 0.2) * (this.radius - 2), Math.sin(ang + 0.2) * (this.radius - 2));
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // Dark iron center sphere
+            ctx.fillStyle = '#0f172a';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Menacing Face on central sphere
+            // Evil slitted glowing red eyes
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 14;
+
+            ctx.beginPath();
+            ctx.moveTo(-32, -18);
+            ctx.lineTo(-12, -10);
+            ctx.lineTo(-28, -2);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(32, -18);
+            ctx.lineTo(12, -10);
+            ctx.lineTo(28, -2);
+            ctx.closePath();
+            ctx.fill();
+
+            // Pupil gleams
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-22, -12, 4, 4);
+            ctx.fillRect(18, -12, 4, 4);
+            ctx.shadowBlur = 0;
+
+            // Jagged grinning mouth
+            ctx.fillStyle = '#b91c1c';
+            ctx.beginPath();
+            ctx.arc(0, 16, 26, 0.1, Math.PI - 0.1);
+            ctx.closePath();
+            ctx.fill();
+
+            // Sharp teeth
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            for (let t = -20; t <= 20; t += 10) {
+                ctx.moveTo(t, 16);
+                ctx.lineTo(t + 4, 25);
+                ctx.lineTo(t + 8, 16);
+            }
+            ctx.fill();
+
+            ctx.restore();
+            this.drawHpBar(ctx, this.radius + 20);
         }
     }
 
@@ -1710,13 +2150,14 @@
         constructor(x, y) {
             const body = Bodies.circle(x, y, 30, { density: 0.005, restitution: 0.5 });
             super(body, 1, 'bomb', 1.2);
-            this.timer = 600; // 10 seconds at 60 FPS
+            this.timer = 600;
+            this.flungByPlayer = false;
         }
 
         takeDamage(amount, sourceBody = null) {
-            // Only take fatal damage/detonate from external direct sources if it was thrusted or time is up
             if (this.isDying) return;
-            if (this.body.isThrown || amount >= 1000) {
+            // Only detonate on damage if explicitly flung by Steve at high velocity or forced purge
+            if ((this.flungByPlayer && this.body.isThrown) || amount >= 1000) {
                 this.explode();
             }
         }
@@ -1799,26 +2240,23 @@
                 density: 0.001
             });
             super(body, 999999, 'heart', 0.5);
-            this.canBeGrabbed = false; // Cannot be manipulated psychically
+            this.canBeGrabbed = true;
             this.rotAngle = 0;
             this.floatTimer = Math.random() * 100;
         }
 
         takeDamage(amount, sourceBody = null) {
-            // Indestructible: immune to bomb blasts, flying crates, and collisions
             return;
         }
 
         update() {
-            this.rotAngle += 0.05; // Spin around y-axis
+            this.rotAngle += 0.05;
             this.floatTimer += 0.04;
-            // Gentle floating bob
             Body.applyForce(this.body, this.body.position, {
                 x: 0,
                 y: -0.0006 + Math.sin(this.floatTimer) * 0.0003
             });
 
-            // Safeguard against falling below world floor
             const pos = this.body.position;
             if (pos.y > 900) {
                 Body.setPosition(this.body, { x: pos.x, y: 880 });
@@ -1831,11 +2269,9 @@
             this.markedForDeletion = true;
             this.isDying = true;
             
-            // Restore 25 HP up to maximum
             playerEntity.hp = Math.min(playerEntity.maxHp, playerEntity.hp + 25);
             SoundFX.playHeal();
             
-            // Heart pickup sparkle burst
             const pos = this.body.position;
             for (let i = 0; i < 28; i++) {
                 particles.push(new Particle(pos.x, pos.y, '#f43f5e', 8, Math.random() * 4 + 2, 35));
@@ -1849,33 +2285,27 @@
             ctx.save();
             ctx.translate(pos.x, pos.y);
 
-            // 3D Y-axis spinning transformation
             const scaleX = Math.cos(this.rotAngle);
             ctx.scale(scaleX, 1);
 
-            // Pure red aura glow
             ctx.shadowColor = '#ff0000';
             ctx.shadowBlur = 18;
 
-            // Rounded, smooth heart path without a sharp point at the bottom
             ctx.beginPath();
             ctx.moveTo(0, 4);
             ctx.bezierCurveTo(0, -8, -23, -20, -23, 0);
-            ctx.bezierCurveTo(-23, 14, -12, 21, 0, 24); // rounded bottom cup
+            ctx.bezierCurveTo(-23, 14, -12, 21, 0, 24);
             ctx.bezierCurveTo(12, 21, 23, 14, 23, 0);
             ctx.bezierCurveTo(23, -20, 0, -8, 0, 4);
             ctx.closePath();
 
-            // Pure red fill
             ctx.fillStyle = '#ff0000';
             ctx.fill();
 
-            // Clean bright red border
             ctx.lineWidth = 2.5;
             ctx.strokeStyle = '#ff3333';
             ctx.stroke();
 
-            // Specular shine highlight
             if (Math.abs(scaleX) > 0.3) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.beginPath();
@@ -1901,27 +2331,28 @@
         mouse.isDown = false;
         document.getElementById('game-over-box').style.display = 'none';
 
-        // Static Ground and Platforms
-        // Panels 1 and 3 (the side elevated platforms) are extended all the way outward past the screen edges
         const ground = Bodies.rectangle(720, 930, 1440, 60, { isStatic: true, render: { fillStyle: '#32CD32' } });
-        const plat1 = Bodies.rectangle(90, 650, 660, 30, { isStatic: true }); // Extended left panel (-240 to 420)
-        const plat2 = Bodies.rectangle(720, 450, 400, 30, { isStatic: true }); // Center elevated platform
-        const plat3 = Bodies.rectangle(1350, 650, 660, 30, { isStatic: true }); // Extended right panel (1020 to 1680)
+        const groundLeftExt = Bodies.rectangle(-200, 930, 600, 60, { isStatic: true });
+        const groundRightExt = Bodies.rectangle(1640, 930, 600, 60, { isStatic: true });
+
+        const plat1 = Bodies.rectangle(90, 650, 660, 30, { isStatic: true });
+        const plat2 = Bodies.rectangle(720, 450, 400, 30, { isStatic: true });
+        const plat3 = Bodies.rectangle(1350, 650, 660, 30, { isStatic: true });
         
         ground.isGround = true;
+        groundLeftExt.isGround = true;
+        groundRightExt.isGround = true;
         plat1.isGround = true;
         plat2.isGround = true;
         plat3.isGround = true;
 
-        // Static Boundaries
-        const wallLeft = Bodies.rectangle(-260, 200, 100, 2400, { isStatic: true });
-        const wallRight = Bodies.rectangle(1700, 200, 100, 2400, { isStatic: true });
-        const ceiling = Bodies.rectangle(720, -200, 2400, 50, { isStatic: true });
+        const wallLeft = Bodies.rectangle(-450, 200, 100, 2400, { isStatic: true });
+        const wallRight = Bodies.rectangle(1890, 200, 100, 2400, { isStatic: true });
+        const ceiling = Bodies.rectangle(720, -200, 2800, 50, { isStatic: true });
 
-        const localStaticBodies = [ground, plat1, plat2, plat3, wallLeft, wallRight, ceiling];
+        const localStaticBodies = [ground, groundLeftExt, groundRightExt, plat1, plat2, plat3, wallLeft, wallRight, ceiling];
         Composite.add(engine.world, localStaticBodies);
 
-        // Player instance
         player = new Player(720, 300);
 
         if (gameStarted) {
@@ -1929,18 +2360,23 @@
         }
     }
 
-    // Structured 10-wave configuration
+    // Defined level compositions - Maw appears strictly as the dedicated threat on Wave 6
     const WAVE_CONFIGS = {
-        1: { zombies: 3, slimes: 0, boxes: 1, bombs: 0 },
-        2: { zombies: 3, slimes: 3, boxes: 1, bombs: 0 },
-        3: { zombies: 5, slimes: 3, boxes: 2, bombs: 0 },
-        4: { zombies: 0, slimes: 10, boxes: 1, bombs: 1 },
-        5: { zombies: 10, slimes: 5, boxes: 3, bombs: 0 },
-        6: { zombies: 10, slimes: 10, boxes: 2, bombs: 2 },
-        7: { zombies: 12, slimes: 12, boxes: 3, bombs: 2 },
-        8: { zombies: 12, slimes: 12, boxes: 2, bombs: 2 },
-        9: { golem: 1, zombies: 10, slimes: 0, boxes: 1, bombs: 2 },
-        10: { boss: true, zombies: 0, slimes: 0, boxes: 2, bombs: 2 }
+        1: { title: "THE AWAKENING", zombies: 3, slimes: 0, maws: 0, boxes: 1, bombs: 0 },
+        2: { title: "GREEN OOZE", zombies: 3, slimes: 3, maws: 0, boxes: 2, bombs: 0 },
+        3: { title: "SWARM RISING", zombies: 6, slimes: 4, maws: 0, boxes: 2, bombs: 1 },
+        4: { title: "SLIME INVASION", zombies: 0, slimes: 12, maws: 0, boxes: 1, bombs: 2 },
+        5: { title: "WALKING DEAD", zombies: 12, slimes: 3, maws: 0, boxes: 3, bombs: 1 },
+        6: { title: "CHOMPER INVASION", zombies: 8, slimes: 8, maws: 2, boxes: 2, bombs: 2 },
+        7: { title: "SIEGE OF THE HORDE", zombies: 14, slimes: 8, maws: 0, boxes: 3, bombs: 2 },
+        8: { title: "CROSSFIRE", zombies: 16, slimes: 10, maws: 0, boxes: 4, bombs: 3 },
+        9: { title: "TITAN'S HEAVE", golem: 1, zombies: 10, slimes: 0, maws: 0, boxes: 1, bombs: 2 },
+        10: { title: "ROYAL GELATIN", boss: true, zombies: 6, slimes: 4, maws: 0, boxes: 3, bombs: 2 },
+        11: { title: "COLOSSAL SIEGE", golem: 3, zombies: 20, slimes: 0, maws: 0, boxes: 1, bombs: 2 },
+        12: { title: "CARNAGE VALLEY", golem: 5, zombies: 5, slimes: 0, maws: 10, boxes: 1, bombs: 2 },
+        13: { title: "TWIN ROYALS", slimeBosses: 2, zombies: 0, slimes: 0, maws: 0, boxes: 2, bombs: 0 },
+        14: { title: "ARMORED FRENZY", golem: 5, zombies: 0, slimes: 0, maws: 15, boxes: 1, bombs: 2 },
+        15: { title: "IRON JUGGERNAUT", spikeBoss: true, zombies: 0, slimes: 0, maws: 0, boxes: 0, bombs: 0 }
     };
 
     function startGame() {
@@ -1964,76 +2400,97 @@
         waveBannerTimer = WAVE_BANNER_DURATION;
         SoundFX.playWaveStart();
 
-        // Structured configuration or fallback for undefined waves past Wave 10:
-        // Exactly 24 total random mobs (random distribution of zombies and slimes)
         let config = WAVE_CONFIGS[wave];
         if (!config) {
-            const randomZombies = Math.floor(Math.random() * 25); // 0 to 24 zombies
-            const randomSlimes = 24 - randomZombies;             // remaining to reach 24
+            // Endless scaling after Level 15
+            const randomZombies = 12 + Math.floor(Math.random() * 8);
+            const randomSlimes = 8 + Math.floor(Math.random() * 6);
+            const randomMaws = 4 + Math.floor(Math.random() * 4);
+            const randomGolems = 2 + Math.floor(Math.random() * 3);
             config = {
+                title: "ENDLESS HORDE",
                 zombies: randomZombies,
                 slimes: randomSlimes,
-                boxes: 2,
+                maws: randomMaws,
+                golem: randomGolems,
+                boxes: 3,
                 bombs: 2
             };
         }
 
-        const spawnHeights = [
-            { y: 840 }, // Ground level
-            { y: 600 }, // Side platform level
-            { y: 400 }  // Mid platform level
-        ];
+        const safeSpawnHeights = [830, 580];
 
-        // Boss spawn for Wave 10
+        if (config.spikeBoss) {
+            new SpikeBoss(720, 260);
+        }
+
         if (config.boss) {
             const boss = new Slime(720, 200, 3);
             boss.isEntering = false;
         }
 
-        // Spawn Golem (e.g. Wave 9)
+        if (config.slimeBosses) {
+            for (let i = 0; i < config.slimeBosses; i++) {
+                const spawnX = i === 0 ? 440 : 1000;
+                const boss = new Slime(spawnX, 220, 3);
+                boss.isEntering = false;
+            }
+        }
+
         for (let i = 0; i < (config.golem || 0); i++) {
             const fromLeft = Math.random() < 0.5;
-            const x = fromLeft ? -50 : 1490;
+            const x = fromLeft ? -60 : 1500;
             const golem = new Golem(x, 830);
             golem.isEntering = true;
+            golem.spawnGraceTimer = 120;
             const dir = fromLeft ? 1 : -1;
             golem.dir = dir;
             golem.facing = dir;
-            Matter.Body.setVelocity(golem.body, { x: dir * 1.5, y: -1 });
+            Matter.Body.setVelocity(golem.body, { x: dir * 1.5, y: -0.5 });
         }
 
-        // Spawn Zombies
-        for (let i = 0; i < (config.zombies || 0); i++) {
-            const loc = spawnHeights[Math.floor(Math.random() * spawnHeights.length)];
+        for (let i = 0; i < (config.maws || 0); i++) {
+            const spawnY = safeSpawnHeights[Math.floor(Math.random() * safeSpawnHeights.length)];
             const fromLeft = Math.random() < 0.5;
-            const x = fromLeft ? -45 : 1485;
-            const mob = new Zombie(x, loc.y);
+            const x = fromLeft ? -50 : 1490;
+            const maw = new Maw(x, spawnY);
+            maw.isEntering = true;
+            maw.spawnGraceTimer = 120;
+            const dir = fromLeft ? 1 : -1;
+            maw.facing = dir;
+            Matter.Body.setVelocity(maw.body, { x: dir * 2.8, y: -0.5 });
+        }
+
+        for (let i = 0; i < (config.zombies || 0); i++) {
+            const spawnY = safeSpawnHeights[Math.floor(Math.random() * safeSpawnHeights.length)];
+            const fromLeft = Math.random() < 0.5;
+            const x = fromLeft ? -50 : 1490;
+            const mob = new Zombie(x, spawnY);
             mob.isEntering = true;
+            mob.spawnGraceTimer = 120;
             const dir = fromLeft ? 1 : -1;
             mob.dir = dir;
             mob.facing = dir;
-            Matter.Body.setVelocity(mob.body, { x: dir * 2.5, y: -1 });
+            Matter.Body.setVelocity(mob.body, { x: dir * 2.2, y: -0.5 });
         }
 
-        // Spawn Slimes
         for (let i = 0; i < (config.slimes || 0); i++) {
-            const loc = spawnHeights[Math.floor(Math.random() * spawnHeights.length)];
+            const spawnY = safeSpawnHeights[Math.floor(Math.random() * safeSpawnHeights.length)];
             const fromLeft = Math.random() < 0.5;
-            const x = fromLeft ? -45 : 1485;
-            const mob = new Slime(x, loc.y, 0);
+            const x = fromLeft ? -50 : 1490;
+            const mob = new Slime(x, spawnY, 0);
             mob.isEntering = true;
+            mob.spawnGraceTimer = 120;
             const dir = fromLeft ? 1 : -1;
             mob.dir = dir;
-            Matter.Body.setVelocity(mob.body, { x: dir * 4, y: -1 });
+            Matter.Body.setVelocity(mob.body, { x: dir * 3.5, y: -0.5 });
         }
 
-        // Spawn Boxes
         for (let i = 0; i < (config.boxes || 0); i++) {
             const x = 200 + Math.random() * 1040;
             new Box(x, -80 - i * 60);
         }
 
-        // Spawn Bombs
         for (let i = 0; i < (config.bombs || 0); i++) {
             const x = 250 + Math.random() * 940;
             new Bomb(x, -120 - i * 80);
@@ -2060,7 +2517,7 @@
     canvas.addEventListener('mousemove', updateMousePos);
 
     canvas.addEventListener('mousedown', (e) => {
-        if (e.button === 0) { // Left click
+        if (e.button === 0) {
             SoundFX.init();
             updateMousePos(e);
             mouse.isDown = true;
@@ -2068,7 +2525,6 @@
         }
     });
 
-    // Window-level mouseup/blur ensures releasing outside the canvas cleanly stops psychic power
     window.addEventListener('mouseup', (e) => {
         if (e.button === 0) {
             mouse.isDown = false;
@@ -2087,73 +2543,84 @@
         }
     });
 
-    // --- UNIFIED TOUCH & ON-SCREEN CONTROLS HANDLERS ---
+    // --- DUAL-ZONE FLOATING TOUCH CONTROLS ---
 
     function handleTouchStart(e) {
         e.preventDefault();
         SoundFX.init();
+        isMobileDevice = true;
+
+        const halfWidth = canvas.width / 2;
+
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
             const pos = getCanvasCoords(touch.clientX, touch.clientY);
 
-            // 1. Check Movement D-Pad buttons
-            let hitDpad = false;
-            for (let btn of onScreenButtons) {
-                const dist = Math.hypot(pos.x - btn.x, pos.y - btn.y);
-                if (dist <= btn.r + 15) {
-                    btn.active = true;
-                    keys[btn.key] = true;
-                    activeTouches.set(touch.identifier, { type: 'button', id: btn.id, key: btn.key });
-                    hitDpad = true;
-                    break;
-                }
+            if (pos.x < halfWidth && moveStick.touchId === null) {
+                moveStick.touchId = touch.identifier;
+                moveStick.active = true;
+                moveStick.baseX = pos.x;
+                moveStick.baseY = pos.y;
+                moveStick.stickX = pos.x;
+                moveStick.stickY = pos.y;
+                updateMoveStick(pos.x, pos.y);
             }
-            if (hitDpad) continue;
-
-            // 2. Check Psychic Joystick (Mobile only)
-            if (isMobileDevice) {
-                const distJoy = Math.hypot(pos.x - psychicJoystick.baseX, pos.y - psychicJoystick.baseY);
-                if (distJoy <= psychicJoystick.baseRadius + 40 && psychicJoystick.touchId === null) {
-                    psychicJoystick.touchId = touch.identifier;
-                    psychicJoystick.active = true;
-                    updatePsychicJoystick(pos.x, pos.y);
-                    activeTouches.set(touch.identifier, { type: 'joystick' });
-                    SoundFX.startPsychicHum();
-                    continue;
-                }
-            }
-
-            // 3. Fallback direct psychic targeting on desktop/hybrid
-            if (!isMobileDevice && activePsychicTouchId === null) {
-                activePsychicTouchId = touch.identifier;
-                mouse.x = pos.x;
-                mouse.y = pos.y;
-                mouse.isDown = true;
-                SoundFX.startPsychicHum();
-                activeTouches.set(touch.identifier, { type: 'direct_psychic' });
+            else if (pos.x >= halfWidth && psychicStick.touchId === null) {
+                psychicStick.touchId = touch.identifier;
+                psychicStick.active = true;
+                psychicStick.baseX = pos.x;
+                psychicStick.baseY = pos.y;
+                psychicStick.stickX = pos.x;
+                psychicStick.stickY = pos.y;
+                psychicStick.distanceRatio = 0;
+                updatePsychicStick(pos.x, pos.y);
             }
         }
     }
 
-    function updatePsychicJoystick(touchX, touchY) {
-        const dx = touchX - psychicJoystick.baseX;
-        const dy = touchY - psychicJoystick.baseY;
+    function updateMoveStick(touchX, touchY) {
+        const dx = touchX - moveStick.baseX;
+        const dy = touchY - moveStick.baseY;
         const dist = Math.hypot(dx, dy);
-        const maxDist = psychicJoystick.baseRadius;
-
-        psychicJoystick.angle = Math.atan2(dy, dx);
-        psychicJoystick.distanceRatio = Math.min(1, dist / maxDist);
+        const maxDist = moveStick.baseRadius;
 
         const clampedDist = Math.min(dist, maxDist);
-        psychicJoystick.stickX = psychicJoystick.baseX + (dist === 0 ? 0 : (dx / dist) * clampedDist);
-        psychicJoystick.stickY = psychicJoystick.baseY + (dist === 0 ? 0 : (dy / dist) * clampedDist);
+        moveStick.stickX = moveStick.baseX + (dist === 0 ? 0 : (dx / dist) * clampedDist);
+        moveStick.stickY = moveStick.baseY + (dist === 0 ? 0 : (dy / dist) * clampedDist);
+
+        if (dist > moveStick.deadzone) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            keys.a = nx < -0.32;
+            keys.d = nx > 0.32;
+            keys.w = ny < -0.45; // Jump
+        } else {
+            keys.a = false;
+            keys.d = false;
+            keys.w = false;
+        }
+    }
+
+    function updatePsychicStick(touchX, touchY) {
+        const dx = touchX - psychicStick.baseX;
+        const dy = touchY - psychicStick.baseY;
+        const dist = Math.hypot(dx, dy);
+        const maxDist = psychicStick.baseRadius;
+
+        psychicStick.angle = Math.atan2(dy, dx);
+        psychicStick.distanceRatio = Math.min(1, dist / maxDist);
+
+        const clampedDist = Math.min(dist, maxDist);
+        psychicStick.stickX = psychicStick.baseX + (dist === 0 ? 0 : (dx / dist) * clampedDist);
+        psychicStick.stickY = psychicStick.baseY + (dist === 0 ? 0 : (dy / dist) * clampedDist);
 
         if (player && !player.isDying) {
             const maxGrabRadius = 450;
-            const targetDistance = psychicJoystick.distanceRatio * maxGrabRadius;
-            mouse.x = player.body.position.x + Math.cos(psychicJoystick.angle) * targetDistance;
-            mouse.y = player.body.position.y + Math.sin(psychicJoystick.angle) * targetDistance;
-            mouse.isDown = psychicJoystick.distanceRatio > 0.05;
+            const targetDistance = psychicStick.distanceRatio * maxGrabRadius;
+            mouse.x = player.body.position.x + Math.cos(psychicStick.angle) * targetDistance;
+            mouse.y = player.body.position.y + Math.sin(psychicStick.angle) * targetDistance;
+            mouse.isDown = psychicStick.distanceRatio > 0.08;
         }
     }
 
@@ -2162,28 +2629,11 @@
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
             const pos = getCanvasCoords(touch.clientX, touch.clientY);
-            const binding = activeTouches.get(touch.identifier);
 
-            if (!binding) continue;
-
-            if (binding.type === 'joystick') {
-                updatePsychicJoystick(pos.x, pos.y);
-            } else if (binding.type === 'button') {
-                // If dragged out of button radius, release
-                const btn = onScreenButtons.find(b => b.id === binding.id);
-                if (btn) {
-                    const dist = Math.hypot(pos.x - btn.x, pos.y - btn.y);
-                    if (dist > btn.r + 30) {
-                        btn.active = false;
-                        keys[btn.key] = false;
-                    } else {
-                        btn.active = true;
-                        keys[btn.key] = true;
-                    }
-                }
-            } else if (binding.type === 'direct_psychic') {
-                mouse.x = pos.x;
-                mouse.y = pos.y;
+            if (touch.identifier === moveStick.touchId) {
+                updateMoveStick(pos.x, pos.y);
+            } else if (touch.identifier === psychicStick.touchId) {
+                updatePsychicStick(pos.x, pos.y);
             }
         }
     }
@@ -2192,40 +2642,28 @@
         e.preventDefault();
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
-            const binding = activeTouches.get(touch.identifier);
 
-            if (binding) {
-                if (binding.type === 'button') {
-                    const btn = onScreenButtons.find(b => b.id === binding.id);
-                    if (btn) {
-                        btn.active = false;
-                        keys[btn.key] = false;
-                    }
-                } else if (binding.type === 'joystick') {
-                    psychicJoystick.touchId = null;
-                    psychicJoystick.active = false;
-                    psychicJoystick.stickX = psychicJoystick.baseX;
-                    psychicJoystick.stickY = psychicJoystick.baseY;
-                    psychicJoystick.distanceRatio = 0;
-                    mouse.isDown = false;
-                    SoundFX.stopPsychicHum();
-                    if (player) {
-                        player.releaseGrip(true);
-                    }
-                } else if (binding.type === 'direct_psychic') {
-                    activePsychicTouchId = null;
-                    mouse.isDown = false;
-                    SoundFX.stopPsychicHum();
-                    if (player) {
-                        player.releaseGrip(true);
-                    }
+            if (touch.identifier === moveStick.touchId) {
+                moveStick.touchId = null;
+                moveStick.active = false;
+                moveStick.stickX = moveStick.baseX;
+                moveStick.stickY = moveStick.baseY;
+                keys.a = false;
+                keys.d = false;
+                keys.w = false;
+            } else if (touch.identifier === psychicStick.touchId) {
+                psychicStick.touchId = null;
+                psychicStick.active = false;
+                psychicStick.stickX = psychicStick.baseX;
+                psychicStick.stickY = psychicStick.baseY;
+                psychicStick.distanceRatio = 0;
+                mouse.isDown = false;
+                if (player) {
+                    player.releaseGrip(true);
                 }
-                activeTouches.delete(touch.identifier);
             }
         }
     }
-
-    let activePsychicTouchId = null;
 
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -2275,7 +2713,6 @@
             return true;
         };
 
-        // Reset grabbable status when dropped entities touch static ground/platforms
         if (entA && (bodyB.isGround || bodyB.isStatic)) {
             entA.canBeGrabbed = true;
         }
@@ -2289,44 +2726,47 @@
         checkThrownImpact(bodyA, bodyB, entA, entB, isStart);
 
         if (entA && entB) {
-            // Boxes never hurt the player
             if ((entA.type === 'box' && entB.type === 'player') || (entB.type === 'box' && entA.type === 'player')) {
                 return;
             }
 
-            // Slime touch player
+            // Slime touch player (Only smallest tier-0 slimes self-destruct; larger tiers and boss deal contact damage)
             if (entA.type === 'slime' && entB.type === 'player' && isStart) {
                 if (player.invulnerableTimer <= 0) {
-                    player.takeDamage(10, entA.body);
+                    const dmg = entA.tier === 0 ? 10 : (entA.isBoss ? 35 : 15 + entA.tier * 5);
+                    player.takeDamage(dmg, entA.body);
                     applyPlayerHurtKnockback(entA.body);
                 }
-                entA.explode();
+                if (entA.tier === 0) {
+                    entA.explode();
+                }
             }
             if (entB.type === 'slime' && entA.type === 'player' && isStart) {
                 if (player.invulnerableTimer <= 0) {
-                    player.takeDamage(10, entB.body);
+                    const dmg = entB.tier === 0 ? 10 : (entB.isBoss ? 35 : 15 + entB.tier * 5);
+                    player.takeDamage(dmg, entB.body);
                     applyPlayerHurtKnockback(entB.body);
                 }
-                entB.explode();
+                if (entB.tier === 0) {
+                    entB.explode();
+                }
             }
             
-            // Slimes explode if thrusted into another entity at speed
-        const relSpeed = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
-        if (entA.type === 'slime' && bodyA.isThrown && isStart && relSpeed > 10) entA.explode();
-        if (entB.type === 'slime' && bodyB.isThrown && isStart && relSpeed > 10) entB.explode();
+            const relSpeed = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
+            if (entA.type === 'slime' && entA.tier === 0 && bodyA.isThrown && isStart && relSpeed > 10) entA.explode();
+            if (entB.type === 'slime' && entB.tier === 0 && bodyB.isThrown && isStart && relSpeed > 10) entB.explode();
 
-        // Healing heart collection on touch with player
-        if (entA && entA.type === 'heart' && entB && entB.type === 'player') {
-            entA.collect(entB);
-            return;
-        }
-        if (entB && entB.type === 'heart' && entA && entA.type === 'player') {
-            entB.collect(entA);
-            return;
-        }
+            if (entA && entA.type === 'heart' && entB && entB.type === 'player') {
+                entA.collect(entB);
+                return;
+            }
+            if (entB && entB.type === 'heart' && entA && entA.type === 'player') {
+                entB.collect(entA);
+                return;
+            }
 
-        // Zombie damage
-        if (entA.type === 'zombie' && entB.type === 'player') {
+            // Zombie damage
+            if (entA.type === 'zombie' && entB.type === 'player') {
                 if (player.invulnerableTimer <= 0) {
                     player.takeDamage(20, entA.body);
                     applyPlayerHurtKnockback(entA.body);
@@ -2353,7 +2793,37 @@
                 }
             }
 
-            // Bomb collision with any entity when thrown or hit
+            // Spike Boss or Flail contact damage to Steve
+            if ((entA.type === 'spike_boss' || entA.type === 'flail') && entB.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(30, entA.body);
+                    applyPlayerHurtKnockback(entA.body);
+                }
+            }
+            if ((entB.type === 'spike_boss' || entB.type === 'flail') && entA.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(30, entB.body);
+                    applyPlayerHurtKnockback(entB.body);
+                }
+            }
+
+            // Maw contact damage & bite
+            if (entA.type === 'maw' && entB.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(25, entA.body);
+                    applyPlayerHurtKnockback(entA.body);
+                    SoundFX.playChomp();
+                }
+            }
+            if (entB.type === 'maw' && entA.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(25, entB.body);
+                    applyPlayerHurtKnockback(entB.body);
+                    SoundFX.playChomp();
+                }
+            }
+
+            // Bomb collision
             if (isStart) {
                 if ((entA.type === 'bomb' && bodyA.isThrown) ||
                     (entB.type === 'bomb' && bodyB.isThrown)) {
@@ -2367,18 +2837,28 @@
     function checkThrownImpact(bodyA, bodyB, entA, entB, isStart) {
         if (!isStart) return;
         
-        // Bombs detonating on surface/entity impacts ONLY when thrusted by player
-        if (entA && entA.type === 'bomb' && bodyA.isThrown) {
-            entA.explode();
-            return;
-        }
-        if (entB && entB.type === 'bomb' && bodyB.isThrown) {
-            entB.explode();
+        // Hearts are purely beneficial items; they never deal damage upon impact
+        if ((entA && entA.type === 'heart') || (entB && entB.type === 'heart')) {
             return;
         }
 
         const relVel = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
         const HIGH_VELOCITY_THRESHOLD = 11;
+
+        // Bombs only detonate on impact if flung by the player at high velocity
+        if (entA && entA.type === 'bomb') {
+            if (entA.flungByPlayer && bodyA.isThrown && relVel > HIGH_VELOCITY_THRESHOLD) {
+                entA.explode();
+                return;
+            }
+        }
+        if (entB && entB.type === 'bomb') {
+            if (entB.flungByPlayer && bodyB.isThrown && relVel > HIGH_VELOCITY_THRESHOLD) {
+                entB.explode();
+                return;
+            }
+        }
+
         if (relVel <= HIGH_VELOCITY_THRESHOLD) return;
 
         if (entA && entB) {
@@ -2390,13 +2870,11 @@
                 return;
             }
 
-            // High speed collision between thrown objects/enemies - damage scales with weight!
             if (bodyA.isThrown || bodyB.isThrown) {
                 const weightA = entA.weight || 1.0;
                 const weightB = entB.weight || 1.0;
                 const baseDmg = (relVel - HIGH_VELOCITY_THRESHOLD) * 2.2;
                 
-                // Damage dealt to B is boosted by A's weight, and vice versa
                 entA.takeDamage(baseDmg * Math.sqrt(weightB), bodyB);
                 entB.takeDamage(baseDmg * Math.sqrt(weightA), bodyA);
                 
@@ -2404,7 +2882,6 @@
                 applyKnockback(entB.body, entA.body, 0.05 * weightA);
             }
         } else {
-            // High speed collision with walls or floors
             const damage = (relVel - HIGH_VELOCITY_THRESHOLD) * 2.5;
             if (entA) {
                 if (entA.type === 'box') entA.takeDamage(1, bodyB);
@@ -2431,84 +2908,86 @@
         ctx.fillStyle = '#32CD32'; 
         ctx.fillRect(0, 900, 1440, 60); 
 
-        // Extended 1st (left) and 3rd (right) panels stretching off past the side borders
         ctx.fillStyle = '#8B4513'; 
-        ctx.fillRect(-240, 635, 660, 30); // Panel 1 (extended off-screen left to x=420)
-        ctx.fillRect(520, 435, 400, 30);  // Panel 2 (center platform)
-        ctx.fillRect(1020, 635, 660, 30); // Panel 3 (extended off-screen right from x=1020)
+        ctx.fillRect(-240, 635, 660, 30);
+        ctx.fillRect(520, 435, 400, 30);
+        ctx.fillRect(1020, 635, 660, 30);
     }
 
     function drawOnScreenControls() {
+        if (!isMobileDevice) return;
+
         ctx.save();
 
-        // 1. Draw Translucent Movement D-Pad (Enlarged)
-        for (let btn of onScreenButtons) {
-            ctx.beginPath();
-            ctx.arc(btn.x, btn.y, btn.r, 0, Math.PI * 2);
+        const ms = moveStick;
+        const mAlpha = ms.active ? 0.75 : 0.28;
 
-            // Translucent glowing button fill
-            ctx.fillStyle = btn.active ? 'rgba(168, 85, 247, 0.55)' : 'rgba(17, 24, 39, 0.4)';
-            ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ms.baseX, ms.baseY, ms.baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(17, 24, 39, ${mAlpha * 0.5})`;
+        ctx.fill();
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = ms.active ? 'rgba(168, 85, 247, 0.9)' : 'rgba(168, 85, 247, 0.4)';
+        ctx.stroke();
 
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = btn.active ? 'rgba(240, 171, 252, 0.95)' : 'rgba(168, 85, 247, 0.55)';
-            ctx.stroke();
+        ctx.strokeStyle = 'rgba(216, 180, 254, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(ms.baseX - ms.baseRadius * 0.6, ms.baseY);
+        ctx.lineTo(ms.baseX + ms.baseRadius * 0.6, ms.baseY);
+        ctx.moveTo(ms.baseX, ms.baseY - ms.baseRadius * 0.6);
+        ctx.lineTo(ms.baseX, ms.baseY + ms.baseRadius * 0.6);
+        ctx.stroke();
 
-            // Directional text/icon with larger font
-            ctx.font = 'bold 36px Inter';
-            ctx.fillStyle = btn.active ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(btn.label, btn.x, btn.y + (btn.label === '▲' ? -2 : (btn.label === '▼' ? 3 : 0)));
-        }
+        ctx.beginPath();
+        ctx.arc(ms.stickX, ms.stickY, ms.handleRadius, 0, Math.PI * 2);
+        ctx.fillStyle = ms.active ? 'rgba(147, 51, 234, 0.75)' : 'rgba(147, 51, 234, 0.35)';
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = ms.active ? '#ffffff' : 'rgba(216, 180, 254, 0.6)';
+        ctx.stroke();
 
-        // 2. Draw Translucent Mobile Psychic Joystick (Mobile only - Enlarged)
-        if (isMobileDevice) {
-            const j = psychicJoystick;
+        ctx.font = 'bold 18px Inter';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('MOVE', ms.stickX, ms.stickY);
 
-            // Outer Base Ring
-            ctx.beginPath();
-            ctx.arc(j.baseX, j.baseY, j.baseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(17, 24, 39, 0.38)';
-            ctx.fill();
-            ctx.lineWidth = 4.5;
-            ctx.strokeStyle = j.active ? 'rgba(192, 38, 211, 0.9)' : 'rgba(168, 85, 247, 0.5)';
-            ctx.stroke();
+        const ps = psychicStick;
+        const pAlpha = ps.active ? 0.85 : 0.3;
 
-            // Concentric Range Guide Ring
-            ctx.beginPath();
-            ctx.arc(j.baseX, j.baseY, j.baseRadius * 0.5, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(216, 180, 254, 0.25)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(ps.baseX, ps.baseY, ps.baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(17, 24, 39, ${pAlpha * 0.5})`;
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = ps.active ? 'rgba(217, 70, 239, 0.95)' : 'rgba(217, 70, 239, 0.45)';
+        ctx.stroke();
 
-            // Joystick Handle Knob
-            ctx.beginPath();
-            ctx.arc(j.stickX, j.stickY, j.handleRadius, 0, Math.PI * 2);
-            ctx.fillStyle = j.active ? 'rgba(168, 85, 247, 0.8)' : 'rgba(147, 51, 234, 0.5)';
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = j.active ? '#ffffff' : 'rgba(240, 171, 252, 0.85)';
-            ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(ps.baseX, ps.baseY, ps.baseRadius * 0.55, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(240, 171, 252, 0.25)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-            // Psychic spiral icon on stick handle
-            ctx.font = 'bold 22px Inter';
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('PSI', j.stickX, j.stickY);
+        ctx.beginPath();
+        ctx.arc(ps.stickX, ps.stickY, ps.handleRadius, 0, Math.PI * 2);
+        ctx.fillStyle = ps.active ? 'rgba(192, 38, 211, 0.85)' : 'rgba(192, 38, 211, 0.4)';
+        ctx.fill();
+        ctx.lineWidth = 4.5;
+        ctx.strokeStyle = ps.active ? '#ffffff' : 'rgba(245, 208, 254, 0.75)';
+        ctx.stroke();
 
-            // Joystick Label
-            ctx.font = '700 16px Inter';
-            ctx.fillStyle = 'rgba(233, 213, 255, 0.8)';
-            ctx.fillText('PSYCHIC JOYSTICK', j.baseX, j.baseY + j.baseRadius + 28);
-        }
+        ctx.font = 'bold 19px Inter';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('PSI', ps.stickX, ps.stickY);
 
         ctx.restore();
     }
 
     function drawUI() {
-        // Draw On-Screen Movement Controls and Psychic Joystick
         drawOnScreenControls();
 
         ctx.fillStyle = 'white';
@@ -2520,7 +2999,6 @@
         ctx.fillText(`Enemies: ${livingEnemiesCount}`, 1400, 75);
         ctx.textAlign = 'left';
 
-        // Wave Announcement Banner
         if (waveBannerTimer > 0) {
             waveBannerTimer--;
             const progress = (WAVE_BANNER_DURATION - waveBannerTimer) / WAVE_BANNER_DURATION;
@@ -2535,6 +3013,7 @@
             }
 
             const scale = 1.0 + (1.0 - progress) * 0.15;
+            const currentCfg = WAVE_CONFIGS[wave] || { title: "ENDLESS HORDE" };
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2 - 40);
@@ -2545,23 +3024,23 @@
 
             ctx.shadowColor = '#a020f0';
             ctx.shadowBlur = 35;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
             ctx.beginPath();
-            ctx.roundRect(-260, -60, 520, 120, 24);
+            ctx.roundRect(-290, -65, 580, 130, 24);
             ctx.fill();
 
             ctx.strokeStyle = '#b946ff';
             ctx.lineWidth = 4;
             ctx.stroke();
 
-            ctx.font = '900 68px Inter';
+            ctx.font = '900 64px Inter';
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(`WAVE ${wave}`, 0, 0);
+            ctx.fillText(`WAVE ${wave}`, 0, -8);
 
-            ctx.font = '600 20px Inter';
+            ctx.font = '700 22px Inter';
             ctx.fillStyle = '#e9d5ff';
             ctx.shadowBlur = 10;
-            ctx.fillText('SURVIVE THE HORDE', 0, 42);
+            ctx.fillText(currentCfg.title || 'SURVIVE THE HORDE', 0, 36);
 
             ctx.restore();
         }
@@ -2576,7 +3055,6 @@
 
             let enemyCount = 0;
 
-            // Single zero-allocation pass: update entities, prune dead ones, and count active enemies
             for (let i = entities.length - 1; i >= 0; i--) {
                 const e = entities[i];
                 if (e.markedForDeletion) {
@@ -2588,13 +3066,13 @@
                 if (!e.isDying) {
                     e.update();
 
-                    // Floor boundary check: auto-purge enemies that fell below the world floor
-                    if (e.body && (e.body.position.y > 980 || isNaN(e.body.position.x))) {
+                    const hasGrace = (e.spawnGraceTimer && e.spawnGraceTimer > 0) || e.isEntering;
+                    if (e.body && (!hasGrace && e.body.position.y > 1050) || isNaN(e.body.position.x)) {
                         e.die();
                         continue;
                     }
 
-                    if ((e.type === 'slime' || e.type === 'zombie' || e.type === 'golem') && e.hp > 0) {
+                    if ((e.type === 'slime' || e.type === 'zombie' || e.type === 'golem' || e.type === 'maw' || e.type === 'spike_boss') && e.hp > 0) {
                         enemyCount++;
                     }
                 }
@@ -2605,13 +3083,13 @@
             if (livingEnemiesCount === 0) {
                 waveTimer++;
                 if (waveTimer === 1) {
-                    // Spawn Healing Heart reward after clearing Wave 3, 6, or 9
-                    if (wave === 3 || wave === 6 || wave === 9) {
+                    // Spawn a healing heart after every 3rd level (3, 6, 9, 12, 15, etc.)
+                    if (wave % 3 === 0) {
                         const heartX = 720 + (Math.random() - 0.5) * 160;
                         new HealingHeart(heartX, 360);
                     }
                 }
-                if (waveTimer > 90) { // Transition to next wave within 1.5 seconds of clearing
+                if (waveTimer > 90) {
                     wave++;
                     spawnWave();
                 }
@@ -2620,7 +3098,6 @@
             }
         }
 
-        // In-place particle updates without recreating the array each frame
         for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
             p.update();
@@ -2643,7 +3120,6 @@
         
         drawStatic();
         
-        // Draw non-player entities first, then player on top (without per-frame array sorting)
         let playerRef = null;
         for (let i = 0; i < entities.length; i++) {
             const e = entities[i];
