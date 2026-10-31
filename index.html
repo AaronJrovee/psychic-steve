@@ -823,7 +823,7 @@
             }
 
             const moveSpeed = 8;
-            const jumpVelocityY = -18; 
+            const jumpVelocityY = -23; 
             
             let vx = this.body.velocity.x;
             let vy = this.body.velocity.y;
@@ -865,8 +865,8 @@
             }
 
             // Clamp maximum upward velocity against anomalous physics impulses
-            if (vy < -22) {
-                vy = -22;
+            if (vy < -26) {
+                vy = -26;
             }
 
             Body.setVelocity(this.body, { x: vx, y: vy });
