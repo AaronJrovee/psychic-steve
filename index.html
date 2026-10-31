@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psychic Steve</title>
+    <!-- Tailwind for overlay styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Matter.js for 2D Physics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f19;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            background-color: #87CEEB; /* Sky blue */
+            box-shadow: 0 0 35px rgba(0,0,0,0.7);
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(17, 24, 39, 0.88);
+            color: white;
+            padding: 2.75rem 3.75rem;
+            border-radius: 1.5rem;
+            text-align: center;
+            pointer-events: auto;
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 35px rgba(168, 85, 247, 0.5);
+            display: none;
+        }
+        #title-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 15, 29, 0.65);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 50;
+        }
+        @keyframes pulseGlow {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 25px rgba(168, 85, 247, 0.65), 0 0 55px rgba(192, 38, 211, 0.4);
+            }
+            50% {
+                transform: scale(1.06);
+                box-shadow: 0 0 45px rgba(168, 85, 247, 0.95), 0 0 85px rgba(192, 38, 211, 0.65);
+            }
+        }
+        .play-btn {
+            background: linear-gradient(135deg, #9333ea, #c026d3);
+            color: white;
+            border: 3px solid rgba(243, 232, 255, 0.9);
+            padding: 1.2rem 4.5rem;
+            font-size: 2.3rem;
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            border-radius: 9999px;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: transform 0.2s ease, filter 0.2s ease;
+            animation: pulseGlow 2.2s infinite ease-in-out;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+        }
+        .play-btn:hover {
+            transform: scale(1.12) !important;
+            filter: brightness(1.2);
+            animation-play-state: paused;
+            box-shadow: 0 0 60px rgba(216, 180, 254, 1), 0 0 95px rgba(192, 38, 211, 0.9);
+        }
+        .play-btn:active {
+            transform: scale(1.02) !important;
+        }
+        .restart-btn {
+            background: linear-gradient(135deg, #7c3aed, #9333ea);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            padding: 0.85rem 2.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+        .restart-btn:hover {
+            transform: scale(1.05);
+            filter: brightness(1.15);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="1440" height="960"></canvas>
+    
+    <div id="ui-layer">
+        <!-- Title Screen -->
+        <div id="title-screen">
+            <h1 class="text-7xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-3">PSYCHIC STEVE</h1>
+            <p class="text-xl text-purple-200 mb-2 font-medium">A / D or Arrows to Move • W or Up to Jump • S to Duck</p>
+            <p class="text-sm text-purple-300 mb-6 tracking-wide">HOLD Left Mouse to channel psychic waves & fling targets • Release to throw</p>
+            <button class="play-btn" onclick="startGame()">PLAY</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-box" class="message-box">
+            <h1 class="text-4xl font-extrabold text-red-500 mb-2 drop-shadow-md">YOU DIED</h1>
+            <p id="wave-reached" class="text-xl mb-4 text-purple-200"></p>
+            <button class="restart-btn" onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- MATTER.JS ALIASES ---
+    const Engine = Matter.Engine,
+          Render = Matter.Render,
+          Runner = Matter.Runner,
+          Bodies = Matter.Bodies,
+          Body = Matter.Body,
+          Composite = Matter.Composite,
+          Events = Matter.Events,
+          Vector = Matter.Vector,
+          Query = Matter.Query;
+
+    // --- GLOBALS & CONFIG ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const engine = Engine.create();
+    engine.gravity.y = 1.5;
+
+    let isLooping = true;
+    let gameStarted = false;
+    let playerDeathFade = 0;
+    let wave = 1;
+    let waveTimer = 0;
+    let waveBannerTimer = 0;
+    const WAVE_BANNER_DURATION = 150;
+    let entities = [];
+    let particles = [];
+    let shakeAmount = 0;
+
+    // Strict Mouse State
+    const mouse = { x: 0, y: 0, isDown: false };
+    
+    // Key Tracking
+    const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
+
+    // --- HELPER CLASSES ---
+
+    class Particle {
+        constructor(x, y, color, speed, size, life) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * speed;
+            this.vy = (Math.random() - 0.5) * speed;
+            this.color = color;
+            this.size = size;
+            this.life = life;
+            this.maxLife = life;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life--;
+        }
+        draw(ctx) {
+            ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    function createExplosion(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            particles.push(new Particle(x, y, color, 16, Math.random() * 5 + 2, 25 + Math.random() * 25));
+        }
+    }
+
+    // --- BASE ENTITY ---
+
+    class Entity {
+        constructor(body, hp, type) {
+            this.body = body;
+            this.hp = hp;
+            this.maxHp = hp;
+            this.type = type;
+            this.body.entity = this; 
+            this.markedForDeletion = false;
+            this.isDying = false;
+            this.canBeGrabbed = true;
+            Composite.add(engine.world, this.body);
+            entities.push(this);
+        }
+
+        takeDamage(amount, sourceBody = null) {
+            if (this.hp <= 0 || this.isDying) return;
+            this.hp -= amount;
+
+            if (this.type === 'slime' || this.type === 'zombie') {
+                shakeAmount = Math.max(shakeAmount, Math.min(18, 6 + amount * 0.35));
+
+                // Satisfying knockback applied whenever mobs take damage from collisions, walls, or bombs
+                if (sourceBody) {
+                    const sourcePos = sourceBody.position || sourceBody;
+                    let dx = this.body.position.x - sourcePos.x;
+                    let dy = this.body.position.y - sourcePos.y;
+                    const len = Math.hypot(dx, dy) || 1;
+                    
+                    // Knock them up and away from the damage source
+                    const nx = dx / len;
+                    const impulseX = nx * (7 + Math.min(amount * 0.4, 12));
+                    const impulseY = -Math.max(6, Math.min(16, 5 + amount * 0.5));
+                    
+                    Matter.Body.setVelocity(this.body, {
+                        x: impulseX,
+                        y: impulseY
+                    });
+                }
+            }
+
+            if (this.hp <= 0) {
+                this.hp = 0;
+                this.die(sourceBody);
+            }
+        }
+
+        die(sourceBody = null) {
+            if (this.isDying) return;
+            this.isDying = true;
+            this.markedForDeletion = true;
+            
+            shakeAmount = 16;
+            
+            let expColor = '#ffffff';
+            if (this.type === 'slime') expColor = '#32cd32';
+            else if (this.type === 'zombie') expColor = '#2E8B57';
+            else if (this.type === 'box') expColor = '#8B4513';
+            else if (this.type === 'player') expColor = '#ff2222';
+            else if (this.type === 'bomb') expColor = '#FF4500';
+            
+            createExplosion(this.body.position.x, this.body.position.y, expColor, 40);
+        }
+
+        update() {}
+        draw(ctx) {}
+
+        drawHpBar(ctx, yOffset) {
+            if (this.hp >= this.maxHp || this.hp <= 0 || this.isDying) return;
+            const width = 60;
+            const height = 8;
+            const x = this.body.position.x - width / 2;
+            const y = this.body.position.y - yOffset;
+            
+            ctx.fillStyle = 'red';
+            ctx.fillRect(x, y, width, height);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(x, y, width * (this.hp / this.maxHp), height);
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x, y, width, height);
+        }
+    }
+
+    // --- PLAYER ENTITY ---
+
+    class Player extends Entity {
+        constructor(x, y) {
+            const body = Bodies.rectangle(x, y, 45, 120, { 
+                inertia: Infinity, 
+                friction: 0.1,
+                restitution: 0,
+                density: 0.002
+            });
+            super(body, 100, 'player');
+            this.animTimer = 0;
+            this.isDucking = false;
+            this.canJump = false;
+            this.grabbedEntity = null;
+            this.invulnerableTimer = 0;
+            this.grabTimer = 0;
+            this.maxGrabDuration = 120; // 2 seconds at 60 FPS
+        }
+
+        takeDamage(amount, sourceBody = null) {
+            if (this.invulnerableTimer > 0 && amount < 1000) return;
+            super.takeDamage(amount, sourceBody);
+            if (!this.isDying) {
+                this.invulnerableTimer = 55;
+            }
+        }
+
+        releaseGrip(impartBoost = false) {
+            if (this.grabbedEntity && !this.grabbedEntity.markedForDeletion) {
+                const b = this.grabbedEntity.body;
+                if (impartBoost) {
+                    Body.setVelocity(b, { x: b.velocity.x * 1.5, y: b.velocity.y * 1.5 });
+                }
+            }
+            this.grabbedEntity = null;
+            this.grabTimer = 0;
+        }
+
+        update() {
+            if (this.invulnerableTimer > 0) {
+                this.invulnerableTimer--;
+            }
+
+            if (this.isDying) return;
+
+            const moveSpeed = 8;
+            const jumpVelocityY = -18; 
+            
+            let vx = this.body.velocity.x;
+            let vy = this.body.velocity.y;
+
+            this.isDucking = keys.s || keys.ArrowDown;
+
+            if (keys.a || keys.ArrowLeft) {
+                vx = -moveSpeed;
+                this.animTimer += 0.2;
+            } else if (keys.d || keys.ArrowRight) {
+                vx = moveSpeed;
+                this.animTimer += 0.2;
+            } else {
+                vx *= 0.5; 
+                this.animTimer = 0;
+            }
+
+            if (this.isDucking) vx *= 0.3; 
+
+            if ((keys.w || keys.ArrowUp) && this.canJump) {
+                vy = jumpVelocityY;
+                this.canJump = false;
+            }
+
+            // ONLY slow fall when the mouse is physically held down
+            if (mouse.isDown && vy > 1.8) {
+                vy = 1.8;
+            }
+
+            // Clamp maximum upward velocity against anomalous physics impulses
+            if (vy < -22) {
+                vy = -22;
+            }
+
+            Body.setVelocity(this.body, { x: vx, y: vy });
+
+            // Keep Steve strictly inside the visible screen boundaries
+            const minX = 25;
+            const maxX = 1415;
+            let currentX = this.body.position.x;
+            let currentY = this.body.position.y;
+            let clamped = false;
+
+            if (currentX < minX) {
+                currentX = minX;
+                if (this.body.velocity.x < 0) Body.setVelocity(this.body, { x: 0, y: this.body.velocity.y });
+                clamped = true;
+            } else if (currentX > maxX) {
+                currentX = maxX;
+                if (this.body.velocity.x > 0) Body.setVelocity(this.body, { x: 0, y: this.body.velocity.y });
+                clamped = true;
+            }
+
+            // Floor safeguard against falling below the ground
+            if (currentY > 840) {
+                currentY = 840;
+                if (this.body.velocity.y > 0) Body.setVelocity(this.body, { x: this.body.velocity.x, y: 0 });
+                this.canJump = true;
+                clamped = true;
+            }
+
+            if (clamped) {
+                Body.setPosition(this.body, { x: currentX, y: currentY });
+            }
+
+            // Psychic interaction logic while holding mouse
+            const maxGrabRadius = 450;
+            if (mouse.isDown) {
+                if (!this.grabbedEntity) {
+                    const bodiesUnderCursor = Query.point(
+                        entities.map(e => e.body),
+                        { x: mouse.x, y: mouse.y }
+                    );
+
+                    for (let b of bodiesUnderCursor) {
+                        if (b.entity && b.entity !== this && !b.entity.isDying && b.entity.canBeGrabbed !== false) {
+                            const dist = Vector.magnitude(Vector.sub(b.position, this.body.position));
+                            if (dist <= maxGrabRadius) {
+                                this.grabbedEntity = b.entity;
+                                this.grabbedEntity.body.isThrown = true;
+                                this.grabTimer = this.maxGrabDuration;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (this.grabbedEntity) {
+                    if (this.grabbedEntity.isDying || this.grabbedEntity.markedForDeletion) {
+                        this.grabbedEntity = null;
+                        this.grabTimer = 0;
+                    } else {
+                        const b = this.grabbedEntity.body;
+                        const distFromSteve = Vector.magnitude(Vector.sub(b.position, this.body.position));
+
+                        // Auto-throw if target is outside psychic radius
+                        if (distFromSteve > maxGrabRadius) {
+                            this.releaseGrip(true);
+                            return;
+                        }
+
+                        // Decrement grab duration timer (2 second limit)
+                        this.grabTimer--;
+                        if (this.grabTimer <= 0) {
+                            // Drop and prevent re-grab until it lands on the ground
+                            this.grabbedEntity.canBeGrabbed = false;
+                            this.releaseGrip(false);
+                            return;
+                        }
+
+                        const target = { x: mouse.x, y: mouse.y };
+                        const mouseDistFromSteve = Vector.magnitude(Vector.sub(target, this.body.position));
+
+                        if (mouseDistFromSteve > maxGrabRadius) {
+                            const angle = Math.atan2(target.y - this.body.position.y, target.x - this.body.position.x);
+                            target.x = this.body.position.x + Math.cos(angle) * maxGrabRadius;
+                            target.y = this.body.position.y + Math.sin(angle) * maxGrabRadius;
+                        }
+
+                        const force = Vector.sub(target, b.position);
+                        Body.setVelocity(b, {
+                            x: Math.max(-25, Math.min(25, force.x * 0.28)),
+                            y: Math.max(-25, Math.min(25, force.y * 0.28))
+                        });
+                        b.isThrown = true;
+                    }
+                }
+            } else if (this.grabbedEntity) {
+                this.releaseGrip(true);
+            }
+        }
+
+        die(sourceBody = null) {
+            if (this.isDying) return;
+            this.isDying = true;
+            this.markedForDeletion = true;
+            
+            shakeAmount = 30;
+            createExplosion(this.body.position.x, this.body.position.y, '#ff2222', 45);
+            createExplosion(this.body.position.x, this.body.position.y, '#ffa500', 35);
+            createExplosion(this.body.position.x, this.body.position.y, '#111111', 25);
+            createExplosion(this.body.position.x, this.body.position.y, '#a020f0', 20);
+
+            this.releaseGrip(false);
+        }
+
+        draw(ctx) {
+            if (this.markedForDeletion) return;
+            
+            // Invulnerability flashing
+            if (this.invulnerableTimer > 0 && Math.floor(this.invulnerableTimer / 4) % 2 === 0) {
+                this.drawHpBarUI();
+                return;
+            }
+
+            const pos = this.body.position;
+            const maxGrabRadius = 450;
+
+            // ONLY render psychic beams, reticle, and tendrils when mouse is physically held down
+            if (mouse.isDown) {
+                ctx.save();
+
+                let targetX, targetY;
+                let isConnected = false;
+
+                if (this.grabbedEntity && !this.grabbedEntity.markedForDeletion) {
+                    targetX = this.grabbedEntity.body.position.x;
+                    targetY = this.grabbedEntity.body.position.y;
+                    isConnected = true;
+                } else {
+                    const dx = mouse.x - pos.x;
+                    const dy = mouse.y - pos.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist > maxGrabRadius) {
+                        const angle = Math.atan2(dy, dx);
+                        targetX = pos.x + Math.cos(angle) * maxGrabRadius;
+                        targetY = pos.y + Math.sin(angle) * maxGrabRadius;
+                    } else {
+                        targetX = mouse.x;
+                        targetY = mouse.y;
+                    }
+                }
+
+                ctx.shadowColor = '#d946ef';
+                ctx.shadowBlur = isConnected ? 24 : 14;
+
+                const beamCount = isConnected ? 4 : 3;
+                for (let w = 0; w < beamCount; w++) {
+                    ctx.strokeStyle = w === 0 ? 'rgba(255, 255, 255, 0.9)' : (isConnected ? '#a020f0' : 'rgba(160, 32, 240, 0.7)');
+                    ctx.lineWidth = w === 0 ? 2.5 : (isConnected ? 4 : 3);
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y - 15);
+
+                    const jitter = isConnected ? 60 : 35;
+                    const cp1x = pos.x + (targetX - pos.x) / 3 + (Math.random() - 0.5) * jitter;
+                    const cp1y = (pos.y - 15) + (targetY - (pos.y - 15)) / 3 + (Math.random() - 0.5) * jitter;
+                    const cp2x = pos.x + 2 * (targetX - pos.x) / 3 + (Math.random() - 0.5) * jitter;
+                    const cp2y = (pos.y - 15) + 2 * (targetY - (pos.y - 15)) / 3 + (Math.random() - 0.5) * jitter;
+
+                    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, targetX, targetY);
+                    ctx.stroke();
+                }
+
+                if (isConnected) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeRect(targetX - 32, targetY - 32, 64, 64);
+
+                    const pulse = (Date.now() % 1000) / 1000 * 20;
+                    ctx.strokeStyle = 'rgba(217, 70, 239, 0.65)';
+                    ctx.strokeRect(targetX - 32 - pulse, targetY - 32 - pulse, 64 + pulse * 2, 64 + pulse * 2);
+                } else {
+                    ctx.fillStyle = '#a020f0';
+                    ctx.beginPath();
+                    ctx.arc(targetX, targetY, 6 + Math.sin(Date.now() / 80) * 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(targetX, targetY, 14, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            // Draw Stick Figure
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            const duckOffset = this.isDucking ? 30 : 0;
+            
+            // Head
+            ctx.beginPath();
+            ctx.arc(0, -45 + duckOffset, 18, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Torso
+            ctx.beginPath();
+            ctx.moveTo(0, -27 + duckOffset);
+            ctx.lineTo(0, 22);
+            ctx.stroke();
+
+            let armSwing = Math.sin(this.animTimer) * 22;
+            let legSwing = Math.cos(this.animTimer) * 22;
+            
+            if (this.isDucking) {
+                armSwing = 0;
+                legSwing = 0;
+            }
+
+            // Arms: only point towards cursor when psychic power is physically held
+            ctx.beginPath();
+            ctx.moveTo(0, -15 + duckOffset); 
+            if (mouse.isDown) {
+                const angle = Math.atan2(mouse.y - pos.y, mouse.x - pos.x);
+                ctx.lineTo(Math.cos(angle) * 37, Math.sin(angle) * 37);
+            } else {
+                ctx.lineTo(-22 + armSwing, 7 + duckOffset);
+                ctx.moveTo(0, -15 + duckOffset);
+                ctx.lineTo(22 - armSwing, 7 + duckOffset);
+            }
+            ctx.stroke();
+
+            // Legs
+            ctx.beginPath();
+            ctx.moveTo(0, 22); 
+            if (this.isDucking) {
+                ctx.lineTo(-22, 45);
+                ctx.moveTo(0, 22);
+                ctx.lineTo(22, 45);
+            } else if (!this.canJump) { 
+                ctx.lineTo(-15, 45);
+                ctx.lineTo(-7, 60);
+                ctx.moveTo(0, 22);
+                ctx.lineTo(22, 37);
+            } else {
+                ctx.lineTo(-15 + legSwing, 60);
+                ctx.moveTo(0, 22);
+                ctx.lineTo(15 - legSwing, 60);
+            }
+            ctx.stroke();
+
+            ctx.restore();
+
+            this.drawHpBarUI();
+        }
+
+        drawHpBarUI() {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(20, 20, 304, 34);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(22, 22, 300 * (this.hp / this.maxHp), 30);
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Inter';
+            ctx.fillText(`HP: ${Math.ceil(this.hp)}`, 30, 46);
+        }
+    }
+
+    // --- MOBS & ITEMS ---
+
+    class Slime extends Entity {
+        constructor(x, y) {
+            const body = Bodies.circle(x, y, 25, {
+                restitution: 0.8, 
+                friction: 0.1,
+                density: 0.001
+            });
+            super(body, 20, 'slime');
+            this.moveTimer = 0;
+            this.dir = Math.random() > 0.5 ? 1 : -1;
+        }
+
+        update() {
+            // Out of bounds check: kill immediately if pushed too far off-screen or below map
+            const pos = this.body.position;
+            if (pos.y > 1100 || pos.x < -300 || pos.x > 1750) {
+                this.die();
+                return;
+            }
+
+            const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
+            if (isMidAir) return;
+
+            // If slime is off the canvas viewport, force direction toward center of the screen
+            if (pos.x < 50) this.dir = 1;
+            else if (pos.x > 1390) this.dir = -1;
+
+            this.moveTimer++;
+            if (this.moveTimer > 60 && pos.x >= 50 && pos.x <= 1390) {
+                this.dir = Math.random() > 0.5 ? 1 : -1;
+                this.moveTimer = 0;
+            }
+            
+            if (Math.random() < 0.03) {
+                Body.applyForce(this.body, this.body.position, { x: 0, y: -0.06 });
+            }
+            
+            Body.setVelocity(this.body, { x: this.dir * 3, y: this.body.velocity.y });
+        }
+
+        die() {
+            if (!this.isDying) this.explode();
+        }
+
+        explode() {
+            if (this.isDying) return;
+            createExplosion(this.body.position.x, this.body.position.y, '#32cd32', 40);
+            super.die();
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            
+            ctx.fillStyle = 'rgba(50, 205, 50, 0.85)'; 
+            ctx.beginPath();
+            const wobble = Math.sin(Date.now() / 100) * 3;
+            ctx.ellipse(0, 0, 25 + wobble, 20 - wobble, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#228B22';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(-8, -5, 3, 0, Math.PI * 2);
+            ctx.arc(8, -5, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(-13, -10, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+            this.drawHpBar(ctx, 35);
+        }
+    }
+
+    class Zombie extends Entity {
+        constructor(x, y) {
+            const body = Bodies.rectangle(x, y, 40, 112, {
+                inertia: Infinity,
+                restitution: 0.5, 
+                friction: 0.1,
+                density: 0.002
+            });
+            super(body, 50, 'zombie');
+            this.animTimer = 0;
+            this.facing = 1;
+        }
+
+        update() {
+            // Out of bounds check: kill immediately if pushed too far off-screen or below map
+            const pos = this.body.position;
+            if (pos.y > 1100 || pos.x < -300 || pos.x > 1750) {
+                this.die();
+                return;
+            }
+
+            const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
+            if (isMidAir) return;
+
+            if (!player || player.isDying) return;
+
+            // March directly toward player or arena center
+            const px = player.body.position.x;
+            const dir = px > pos.x ? 1 : -1;
+            this.facing = dir;
+            
+            Body.setVelocity(this.body, { x: dir * 2.2, y: this.body.velocity.y });
+            this.animTimer += 0.1;
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            
+            ctx.strokeStyle = '#2E8B57'; 
+            ctx.fillStyle = '#8FBC8F';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Use persistent facing direction to prevent flickering from micro-jitter
+            if (Math.abs(this.body.velocity.x) > 0.3) {
+                this.facing = this.body.velocity.x > 0 ? 1 : -1;
+            }
+            const eyeDir = this.facing;
+
+            ctx.beginPath();
+            ctx.arc(15 * eyeDir, -37, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = 'red';
+            ctx.fillRect(eyeDir * 18, -42, 4, 4);
+            ctx.fillRect(eyeDir * 9, -42, 4, 4);
+
+            ctx.beginPath();
+            ctx.moveTo(15 * eyeDir, -19);
+            ctx.lineTo(0, 22);
+            ctx.stroke();
+
+            let armSwing = Math.sin(this.animTimer) * 15;
+            ctx.beginPath();
+            ctx.moveTo(7 * eyeDir, -7);
+            ctx.lineTo(22 * eyeDir + armSwing, 15);
+            ctx.stroke();
+
+            let legSwing = Math.sin(this.animTimer * 0.5) * 15; 
+            ctx.beginPath();
+            ctx.moveTo(0, 22);
+            ctx.lineTo(-15 + legSwing, 52);
+            ctx.moveTo(0, 22);
+            ctx.lineTo(15 - legSwing, 55);
+            ctx.stroke();
+
+            ctx.restore();
+            this.drawHpBar(ctx, 65);
+        }
+    }
+
+    class Box extends Entity {
+        constructor(x, y) {
+            const body = Bodies.rectangle(x, y, 60, 60, { density: 0.005 });
+            super(body, 3, 'box'); 
+        }
+        
+        die() {
+            if (this.isDying) return;
+            super.die();
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(this.body.angle);
+            
+            ctx.fillStyle = '#D2B48C';
+            ctx.fillRect(-30, -30, 60, 60);
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(-30, -30, 60, 60);
+            
+            ctx.beginPath();
+            ctx.moveTo(-30, -30);
+            ctx.lineTo(30, 30);
+            ctx.moveTo(30, -30);
+            ctx.lineTo(-30, 30);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    }
+
+    class Bomb extends Entity {
+        constructor(x, y) {
+            const body = Bodies.circle(x, y, 30, { density: 0.005, restitution: 0.5 });
+            super(body, 1, 'bomb');
+            this.timer = 600; 
+        }
+
+        update() {
+            this.timer--;
+            if (this.timer <= 0) {
+                this.explode();
+            }
+        }
+
+        explode() {
+            if (this.isDying) return;
+            const pos = this.body.position;
+            createExplosion(pos.x, pos.y, '#FF4500', 60);
+            createExplosion(pos.x, pos.y, '#FFD700', 40);
+            shakeAmount = 25; 
+
+            const radius = 250;
+            entities.forEach(e => {
+                if (e !== this && !e.isDying) {
+                    const dist = Vector.magnitude(Vector.sub(e.body.position, pos));
+                    if (dist < radius) {
+                        e.takeDamage(50, this.body);
+                        const force = Vector.mult(Vector.normalise(Vector.sub(e.body.position, pos)), 0.2);
+                        Body.applyForce(e.body, e.body.position, force);
+                    }
+                }
+            });
+
+            this.die();
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(this.body.angle);
+            
+            ctx.fillStyle = '#222';
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(-12, -12, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#A9A9A9';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, -30);
+            ctx.quadraticCurveTo(15, -45, 30, -37);
+            ctx.stroke();
+
+            if (this.timer % 10 < 5) {
+                ctx.fillStyle = '#FFA500';
+                ctx.beginPath();
+                ctx.arc(30, -37, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    // --- GAME INITIALIZATION & MANAGEMENT ---
+
+    let player;
+
+    function initGame() {
+        Composite.clear(engine.world);
+        Engine.clear(engine);
+        entities = [];
+        particles = [];
+        wave = 1;
+        playerDeathFade = 0;
+        mouse.isDown = false;
+        document.getElementById('game-over-box').style.display = 'none';
+
+        // Static Ground and Platforms
+        const ground = Bodies.rectangle(720, 930, 1440, 60, { isStatic: true, render: { fillStyle: '#32CD32' } });
+        const plat1 = Bodies.rectangle(250, 650, 300, 30, { isStatic: true });
+        const plat2 = Bodies.rectangle(720, 450, 400, 30, { isStatic: true });
+        const plat3 = Bodies.rectangle(1190, 650, 300, 30, { isStatic: true });
+        
+        ground.isGround = true;
+        plat1.isGround = true;
+        plat2.isGround = true;
+        plat3.isGround = true;
+        
+        // Static Boundaries - left and right walls placed further outward so enemies can spawn off-screen and enter cleanly
+        const wallLeft = Bodies.rectangle(-160, 200, 100, 2400, { isStatic: true });
+        const wallRight = Bodies.rectangle(1600, 200, 100, 2400, { isStatic: true });
+        const ceiling = Bodies.rectangle(720, -200, 2200, 50, { isStatic: true });
+
+        const localStaticBodies = [ground, plat1, plat2, plat3, wallLeft, wallRight, ceiling];
+        Composite.add(engine.world, localStaticBodies);
+
+        // Player instance
+        player = new Player(720, 300);
+
+        if (gameStarted) {
+            spawnWave();
+        }
+    }
+
+    function startGame() {
+        document.getElementById('title-screen').style.display = 'none';
+        gameStarted = true;
+        spawnWave();
+    }
+
+    function resetGame() {
+        initGame();
+        if (!isLooping) {
+            isLooping = true;
+            gameLoop();
+        }
+    }
+
+    function spawnWave() {
+        waveTimer = 0;
+        waveBannerTimer = WAVE_BANNER_DURATION;
+        const numEnemies = wave * 2 + 2;
+        const numItems = Math.ceil(wave / 2);
+
+        // Platform & ground spawn elevations: ground (y: 840), lower side platforms (y: 600), upper middle platform (y: 400)
+        const spawnHeights = [
+            { y: 840 }, // Ground level
+            { y: 600 }, // Side platform level (left/right)
+            { y: 400 }  // High center platform trajectory level
+        ];
+
+        for (let i = 0; i < numEnemies; i++) {
+            const loc = spawnHeights[Math.floor(Math.random() * spawnHeights.length)];
+            const fromLeft = Math.random() < 0.5;
+
+            // Spawn cleanly off the screen on either side
+            const x = fromLeft ? -45 : 1485;
+            const y = loc.y;
+
+            let mob;
+            if (Math.random() < 0.5) {
+                mob = new Slime(x, y);
+            } else {
+                mob = new Zombie(x, y);
+            }
+
+            // Give them initial momentum towards the center of the screen so they march right in
+            const entryDirection = fromLeft ? 1 : -1;
+            mob.dir = entryDirection;
+            mob.facing = entryDirection;
+            Matter.Body.setVelocity(mob.body, {
+                x: entryDirection * (mob.type === 'slime' ? 4 : 2.5),
+                y: -1
+            });
+        }
+
+        for (let i = 0; i < numItems; i++) {
+            const x = 150 + Math.random() * 1140;
+            const y = -100;
+            if (Math.random() < 0.5) {
+                new Box(x, y);
+            } else {
+                new Bomb(x, y);
+            }
+        }
+    }
+
+    // --- INPUT HANDLING ---
+
+    window.addEventListener('keydown', e => {
+        if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+    });
+    window.addEventListener('keyup', e => {
+        if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+    });
+    
+    function updateMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        mouse.x = (e.clientX - rect.left) * scaleX;
+        mouse.y = (e.clientY - rect.top) * scaleY;
+    }
+
+    canvas.addEventListener('mousemove', updateMousePos);
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0) { // Left click
+            updateMousePos(e);
+            mouse.isDown = true;
+        }
+    });
+
+    // Window-level mouseup/blur ensures releasing outside the canvas cleanly stops psychic power
+    window.addEventListener('mouseup', (e) => {
+        if (e.button === 0) {
+            mouse.isDown = false;
+            if (player) {
+                player.releaseGrip(true);
+            }
+        }
+    });
+
+    window.addEventListener('blur', () => {
+        mouse.isDown = false;
+        if (player) {
+            player.releaseGrip(true);
+        }
+    });
+
+    // --- COLLISIONS & DAMAGE ---
+    
+    function applyKnockback(targetBody, sourceBody, forceMultiplier) {
+        const dir = Vector.normalise(Vector.sub(targetBody.position, sourceBody.position));
+        dir.y = -Math.abs(dir.y || 1) - 0.7;
+        const force = Vector.mult(Vector.normalise(dir), forceMultiplier);
+        Body.applyForce(targetBody, targetBody.position, force);
+    }
+
+    function applyPlayerHurtKnockback(attackerBody) {
+        const dirX = player.body.position.x >= attackerBody.position.x ? 1 : -1;
+        Body.setVelocity(player.body, {
+            x: dirX * 12,
+            y: -14
+        });
+    }
+
+    Events.on(engine, 'collisionStart', (event) => {
+        event.pairs.forEach((pair) => {
+            handleCollision(pair.bodyA, pair.bodyB, pair, true);
+        });
+    });
+
+    Events.on(engine, 'collisionActive', (event) => {
+        event.pairs.forEach((pair) => {
+            handleCollision(pair.bodyA, pair.bodyB, pair, false);
+        });
+    });
+
+    function handleCollision(bodyA, bodyB, pair, isStart) {
+        const entA = bodyA.entity;
+        const entB = bodyB.entity;
+
+        const checkGroundContact = (playerBody, otherBody) => {
+            if (!otherBody.isStatic || !otherBody.isGround) return false;
+            if (playerBody.position.y >= otherBody.position.y) return false;
+            if (pair && pair.collision && pair.collision.normal) {
+                const ny = Math.abs(pair.collision.normal.y);
+                if (ny < 0.6) return false;
+            }
+            return true;
+        };
+
+        // Reset grabbable status when dropped entities touch static ground/platforms
+        if (entA && (bodyB.isGround || bodyB.isStatic)) {
+            entA.canBeGrabbed = true;
+        }
+        if (entB && (bodyA.isGround || bodyA.isStatic)) {
+            entB.canBeGrabbed = true;
+        }
+
+        if (entA === player && checkGroundContact(bodyA, bodyB)) player.canJump = true;
+        if (entB === player && checkGroundContact(bodyB, bodyA)) player.canJump = true;
+
+        checkThrownImpact(bodyA, bodyB, entA, entB, isStart);
+
+        if (entA && entB) {
+            // Boxes never hurt the player
+            if ((entA.type === 'box' && entB.type === 'player') || (entB.type === 'box' && entA.type === 'player')) {
+                return;
+            }
+
+            // Slime touch player
+            if (entA.type === 'slime' && entB.type === 'player' && isStart) {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(20, entA.body);
+                    applyPlayerHurtKnockback(entA.body);
+                }
+                entA.explode();
+            }
+            if (entB.type === 'slime' && entA.type === 'player' && isStart) {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(20, entB.body);
+                    applyPlayerHurtKnockback(entB.body);
+                }
+                entB.explode();
+            }
+            
+            // Slimes explode if thrusted into another entity at speed
+            const relSpeed = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
+            if (entA.type === 'slime' && bodyA.isThrown && isStart && relSpeed > 10) entA.explode();
+            if (entB.type === 'slime' && bodyB.isThrown && isStart && relSpeed > 10) entB.explode();
+
+            // Zombie damage
+            if (entA.type === 'zombie' && entB.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(30, entA.body);
+                    applyPlayerHurtKnockback(entA.body);
+                }
+            }
+            if (entB.type === 'zombie' && entA.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(30, entB.body);
+                    applyPlayerHurtKnockback(entB.body);
+                }
+            }
+        }
+    }
+
+    function checkThrownImpact(bodyA, bodyB, entA, entB, isStart) {
+        if (!isStart) return;
+        
+        const relVel = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
+        const HIGH_VELOCITY_THRESHOLD = 11;
+        if (relVel <= HIGH_VELOCITY_THRESHOLD) return;
+
+        if (entA && entB) {
+            const hasPlayer = entA.type === 'player' || entB.type === 'player';
+            const hasBox = entA.type === 'box' || entB.type === 'box';
+            if (hasPlayer && hasBox) {
+                if (entA.type === 'box') entA.takeDamage(1, bodyB);
+                if (entB.type === 'box') entB.takeDamage(1, bodyA);
+                return;
+            }
+
+            // High speed collision between thrown objects/enemies
+            if (bodyA.isThrown || bodyB.isThrown) {
+                const damage = (relVel - HIGH_VELOCITY_THRESHOLD) * 2.5;
+                entA.takeDamage(damage, bodyB);
+                entB.takeDamage(damage, bodyA);
+                
+                applyKnockback(entA.body, entB.body, 0.05);
+                applyKnockback(entB.body, entA.body, 0.05);
+            }
+        } else {
+            // High speed collision with walls or floors
+            const damage = (relVel - HIGH_VELOCITY_THRESHOLD) * 2.5;
+            if (entA) {
+                if (entA.type === 'box') entA.takeDamage(1, bodyB);
+                else if (bodyA.isThrown) entA.takeDamage(damage, bodyB);
+            }
+            if (entB) {
+                if (entB.type === 'box') entB.takeDamage(1, bodyA);
+                else if (bodyB.isThrown) entB.takeDamage(damage, bodyA);
+            }
+        }
+    }
+
+    Events.on(engine, 'beforeUpdate', () => {
+        entities.forEach(e => {
+            if (e.body.isThrown && e.body.speed < 2) {
+                e.body.isThrown = false;
+            }
+        });
+    });
+
+    // --- DRAWING & RENDER LOOP ---
+
+    function drawStatic() {
+        ctx.fillStyle = '#32CD32'; 
+        ctx.fillRect(0, 900, 1440, 60); 
+
+        ctx.fillStyle = '#8B4513'; 
+        ctx.fillRect(100, 635, 300, 30); // Plat 1
+        ctx.fillRect(520, 435, 400, 30); // Plat 2
+        ctx.fillRect(1040, 635, 300, 30); // Plat 3
+    }
+
+    function drawUI() {
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 32px Inter';
+        ctx.textAlign = 'right';
+        ctx.fillText(`WAVE ${wave}`, 1400, 40);
+        
+        const enemiesLeft = entities.filter(e => 
+            (e.type === 'slime' || e.type === 'zombie') && 
+            !e.isDying && 
+            !e.markedForDeletion && 
+            e.hp > 0
+        ).length;
+        ctx.font = '24px Inter';
+        ctx.fillText(`Enemies: ${enemiesLeft}`, 1400, 75);
+        ctx.textAlign = 'left';
+
+        // Wave Announcement Banner
+        if (waveBannerTimer > 0) {
+            waveBannerTimer--;
+            const progress = (WAVE_BANNER_DURATION - waveBannerTimer) / WAVE_BANNER_DURATION;
+            let alpha = 0;
+
+            if (progress < 0.2) {
+                alpha = progress / 0.2;
+            } else if (progress < 0.7) {
+                alpha = 1.0;
+            } else {
+                alpha = Math.max(0, (1.0 - progress) / 0.3);
+            }
+
+            const scale = 1.0 + (1.0 - progress) * 0.15;
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2 - 40);
+            ctx.scale(scale, scale);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.globalAlpha = alpha;
+
+            ctx.shadowColor = '#a020f0';
+            ctx.shadowBlur = 35;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.beginPath();
+            ctx.roundRect(-260, -60, 520, 120, 24);
+            ctx.fill();
+
+            ctx.strokeStyle = '#b946ff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            ctx.font = '900 68px Inter';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`WAVE ${wave}`, 0, 0);
+
+            ctx.font = '600 20px Inter';
+            ctx.fillStyle = '#e9d5ff';
+            ctx.shadowBlur = 10;
+            ctx.fillText('SURVIVE THE HORDE', 0, 42);
+
+            ctx.restore();
+        }
+    }
+
+    function gameLoop() {
+        if (!isLooping) return;
+        requestAnimationFrame(gameLoop);
+
+        if (gameStarted) {
+            Engine.update(engine, 1000 / 60);
+
+            entities.forEach(e => {
+                if (!e.isDying) {
+                    e.update();
+                }
+            });
+
+            for (let i = entities.length - 1; i >= 0; i--) {
+                if (entities[i].markedForDeletion) {
+                    Composite.remove(engine.world, entities[i].body);
+                    entities.splice(i, 1);
+                }
+            }
+
+            const livingEnemies = entities.filter(e => 
+                (e.type === 'slime' || e.type === 'zombie') && 
+                !e.isDying && 
+                !e.markedForDeletion && 
+                e.hp > 0
+            );
+
+            if (livingEnemies.length === 0) {
+                waveTimer++;
+                if (waveTimer > 90) { // Transition to next wave within 1.5 seconds of clearing
+                    wave++;
+                    spawnWave();
+                }
+            } else {
+                waveTimer = 0;
+            }
+        }
+
+        particles.forEach(p => p.update());
+        particles = particles.filter(p => p.life > 0);
+
+        ctx.save();
+        
+        if (shakeAmount > 0) {
+            const dx = (Math.random() - 0.5) * shakeAmount;
+            const dy = (Math.random() - 0.5) * shakeAmount;
+            ctx.translate(dx, dy);
+            shakeAmount *= 0.9;
+            if (shakeAmount < 0.5) shakeAmount = 0;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        drawStatic();
+        
+        entities.sort((a,b) => (a.type === 'player' ? 1 : -1)).forEach(e => {
+            e.draw(ctx);
+        });
+        
+        particles.forEach(p => p.draw(ctx));
+        
+        if (player && player.isDying) {
+            playerDeathFade = Math.min(0.65, playerDeathFade + 0.015);
+            ctx.fillStyle = `rgba(0, 0, 0, ${playerDeathFade})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (playerDeathFade >= 0.65) {
+                document.getElementById('game-over-box').style.display = 'block';
+                document.getElementById('wave-reached').innerText = `You reached Wave ${wave}`;
+            }
+        }
+
+        ctx.restore();
+
+        if (gameStarted) {
+            drawUI();
+        }
+    }
+
+    // Launch game
+    initGame();
+    gameLoop();
+
+</script>
+</body>
+</html>
