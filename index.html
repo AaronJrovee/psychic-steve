@@ -139,6 +139,14 @@
             <h1 class="text-7xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-3">PSYCHIC STEVE</h1>
             <p class="text-xl text-purple-200 mb-2 font-medium">A / D or Arrows to Move • W or Up to Jump</p>
             <p class="text-sm text-purple-300 mb-6 tracking-wide">HOLD Left Mouse or use Touch Controls to channel psychic waves & fling targets • Release to throw</p>
+            
+            <!-- Difficulty Selector -->
+            <div class="flex gap-4 mb-6" id="difficulty-selector">
+                <button id="btn-diff-easy" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
+                <button id="btn-diff-normal" class="px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
+                <button id="btn-diff-hard" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
+            </div>
+
             <button class="play-btn" onclick="startGame()">PLAY</button>
         </div>
 
@@ -589,6 +597,24 @@
 
     let isLooping = true;
     let gameStarted = false;
+    let currentDifficulty = 'normal';
+
+    function setDifficulty(diff) {
+        currentDifficulty = diff;
+        const btnEasy = document.getElementById('btn-diff-easy');
+        const btnNormal = document.getElementById('btn-diff-normal');
+        const btnHard = document.getElementById('btn-diff-hard');
+        
+        [btnEasy, btnNormal, btnHard].forEach(b => {
+            b.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all";
+        });
+
+        const targetBtn = document.getElementById(`btn-diff-${diff}`);
+        if (diff === 'easy') targetBtn.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-green-400 bg-green-600 transform scale-110 shadow-[0_0_15px_rgba(74,222,128,0.6)] transition-all";
+        if (diff === 'normal') targetBtn.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all";
+        if (diff === 'hard') targetBtn.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-red-400 bg-red-600 transform scale-110 shadow-[0_0_15px_rgba(248,113,113,0.6)] transition-all";
+    }
+
     let playerDeathFade = 0;
     let wave = 1;
     let finalWaveReached = 1;
@@ -917,7 +943,8 @@
             if (this.grabbedEntity && !this.grabbedEntity.markedForDeletion) {
                 const b = this.grabbedEntity.body;
                 if (impartBoost) {
-                    const cfg = LEVEL_CONFIGS[playerLevel] || LEVEL_CONFIGS[1];
+                    const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
+                    const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
                     const maxThrowSpeed = cfg.maxThrowSpeed;
                     let vx = b.velocity.x * cfg.throwBoost;
                     let vy = b.velocity.y * cfg.throwBoost;
@@ -1056,26 +1083,36 @@
 
                         if (distToSteve > maxGrabRadius) continue;
 
-                        // Dot product along Steve's aiming ray
-                        const projAlongAim = toEnt.x * aimNorm.x + toEnt.y * aimNorm.y;
-
-                        // Lateral perpendicular distance from Steve's psychic ray
-                        const perpDist = Math.abs(toEnt.x * (-aimNorm.y) + toEnt.y * aimNorm.x);
-
-                        // Distance directly from current mouse/reticle position
                         const distToCursor = Math.hypot(b.position.x - mouse.x, b.position.y - mouse.y);
 
-                        // If user aims roughly in the direction (projAlongAim > 0), prioritize targets even if they overshoot
-                        let score = 0;
-                        if (projAlongAim > 10 && perpDist < 140) {
-                            score = 1000 - perpDist * 3.5 - Math.abs(distToSteve - Math.min(aimDist, maxGrabRadius)) * 0.8;
-                        } else if (distToCursor < 120) {
-                            score = 800 - distToCursor * 3.5;
-                        }
+                        if (currentDifficulty === 'hard') {
+                            // Strict aiming: No auto-aim assist cone
+                            if (distToCursor < 60) {
+                                let score = 1000 - distToCursor;
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestCandidate = ent;
+                                }
+                            }
+                        } else {
+                            // Dot product along Steve's aiming ray
+                            const projAlongAim = toEnt.x * aimNorm.x + toEnt.y * aimNorm.y;
 
-                        if (score > bestScore && score > 200) {
-                            bestScore = score;
-                            bestCandidate = ent;
+                            // Lateral perpendicular distance from Steve's psychic ray
+                            const perpDist = Math.abs(toEnt.x * (-aimNorm.y) + toEnt.y * aimNorm.x);
+
+                            // If user aims roughly in the direction (projAlongAim > 0), prioritize targets even if they overshoot
+                            let score = 0;
+                            if (projAlongAim > 10 && perpDist < 140) {
+                                score = 1000 - perpDist * 3.5 - Math.abs(distToSteve - Math.min(aimDist, maxGrabRadius)) * 0.8;
+                            } else if (distToCursor < 120) {
+                                score = 800 - distToCursor * 3.5;
+                            }
+
+                            if (score > bestScore && score > 200) {
+                                bestScore = score;
+                                bestCandidate = ent;
+                            }
                         }
                     }
 
@@ -1125,7 +1162,8 @@
                         const weightFactor = Math.max(0.25, 1.25 / Math.sqrt(this.grabbedEntity.weight || 1));
                         
                         // Dynamic psychic physics scaled strictly by playerLevel
-                        const cfg = LEVEL_CONFIGS[playerLevel] || LEVEL_CONFIGS[1];
+                        const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
+                        const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
                         const psychicDrag = cfg.psychicDrag;
                         const maxHeldSpeed = cfg.maxHeldSpeed;
 
@@ -1389,7 +1427,8 @@
             if (isMaxLevel) {
                 ctx.fillText(`LV 5 [MAX]`, xpBarX + 14, xpBarY + 25);
             } else {
-                ctx.fillText(`LV ${playerLevel}`, xpBarX + 14, xpBarY + 25);
+                const diffLabel = currentDifficulty === 'easy' ? ' (MAX POWERS)' : '';
+                ctx.fillText(`LV ${playerLevel}${diffLabel}`, xpBarX + 14, xpBarY + 25);
             }
 
             // Level Up floating toast popup
