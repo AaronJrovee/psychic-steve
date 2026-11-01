@@ -1001,7 +1001,7 @@
                 const footY = this.body.position.y + 60;
                 const footX = this.body.position.x;
                 const hits = Query.point(engine.world.bodies, { x: footX, y: footY + 4 });
-                const isSupported = hits.some(b => b.isStatic && b.isGround);
+                const isSupported = hits.some(b => b !== this.body && !b.isSensor);
                 if (!isSupported) {
                     this.canJump = false;
                 }
@@ -1565,7 +1565,7 @@
         constructor(x, y) {
             const body = Bodies.rectangle(x, y, 40, 112, {
                 inertia: Infinity,
-                restitution: 0.5, 
+                restitution: 0.15, // Reduced bounciness 
                 friction: 0.1,
                 density: 0.002
             });
@@ -3590,7 +3590,7 @@
         event.pairs.forEach((pair) => {
             if (player && (pair.bodyA === player.body || pair.bodyB === player.body)) {
                 const other = pair.bodyA === player.body ? pair.bodyB : pair.bodyA;
-                if (other.isStatic && other.isGround) {
+                if (player.body.position.y < other.position.y) {
                     player.canJump = false;
                 }
             }
@@ -3602,11 +3602,11 @@
         const entB = bodyB.entity;
 
         const checkGroundContact = (playerBody, otherBody) => {
-            if (!otherBody.isStatic || !otherBody.isGround) return false;
-            if (playerBody.position.y >= otherBody.position.y) return false;
+            if (otherBody.isSensor) return false;
+            if (playerBody.position.y >= otherBody.position.y - 15) return false;
             if (pair && pair.collision && pair.collision.normal) {
                 const ny = Math.abs(pair.collision.normal.y);
-                if (ny < 0.6) return false;
+                if (ny < 0.5) return false;
             }
             return true;
         };
@@ -3790,6 +3790,15 @@
 
     function checkThrownImpact(bodyA, bodyB, entA, entB, isStart) {
         if (!isStart) return;
+
+        // --- KINETIC IMPACT DAMPENING ---
+        // Thrown objects (except bouncy slimes) shed 15% of their velocity upon impact to settle faster
+        if (entA && bodyA.isThrown && entA.type !== 'slime') {
+            Matter.Body.setVelocity(bodyA, { x: bodyA.velocity.x * 0.85, y: bodyA.velocity.y * 0.85 });
+        }
+        if (entB && bodyB.isThrown && entB.type !== 'slime') {
+            Matter.Body.setVelocity(bodyB, { x: bodyB.velocity.x * 0.85, y: bodyB.velocity.y * 0.85 });
+        }
         
         // Hearts are purely beneficial items; they never deal damage upon impact
         if ((entA && entA.type === 'heart') || (entB && entB.type === 'heart')) {
