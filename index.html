@@ -531,6 +531,22 @@
             impactOsc.stop(now + 0.5);
         },
 
+        playBoneClack() {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(420, now);
+            osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.09);
+        },
+
         startPsychicHum() {},
         stopPsychicHum() {}
     };
@@ -557,11 +573,14 @@
     let gameStarted = false;
     let playerDeathFade = 0;
     let wave = 1;
+    let finalWaveReached = 1;
     let waveTimer = 0;
     let waveBannerTimer = 0;
     const WAVE_BANNER_DURATION = 150;
+    let isWavePendingSpawn = false;
     let entities = [];
     let particles = [];
+    let collapsingSkeletons = [];
     let shakeAmount = 0;
     let livingEnemiesCount = 0;
 
@@ -572,7 +591,8 @@
     const keys = { w: false, a: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowRight: false };
 
     // --- DUAL-ZONE FLOATING VIRTUAL STICKS CONFIG ---
-    let isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+    // Start strictly false so desktop/mouse users never see on-screen joysticks
+    let isMobileDevice = false;
 
     // Movement Floating Stick (Left Screen Half)
     const moveStick = {
@@ -668,7 +688,7 @@
             this.isEntering = false;
             this.hp -= amount;
 
-            if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem' || this.type === 'maw') {
+            if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem' || this.type === 'maw' || this.type === 'skeleton') {
                 SoundFX.playHit();
                 shakeAmount = Math.max(shakeAmount, Math.min(18, 6 + amount * 0.35));
 
@@ -702,11 +722,17 @@
             
             shakeAmount = 16;
             
+            // Skeletons handle death via custom collapsing bone animation rather than particle bursts
+            if (this.type === 'skeleton') {
+                return;
+            }
+
             let expColor = '#ffffff';
             if (this.type === 'slime') expColor = '#32cd32';
             else if (this.type === 'zombie') expColor = '#2E8B57';
             else if (this.type === 'golem') expColor = '#708090';
             else if (this.type === 'maw') expColor = '#6b21a8';
+            else if (this.type === 'bone') expColor = '#f1f5f9';
             else if (this.type === 'box') expColor = '#8B4513';
             else if (this.type === 'player') expColor = '#ff2222';
             else if (this.type === 'bomb') expColor = '#FF4500';
@@ -966,6 +992,7 @@
             if (this.isDying) return;
             this.isDying = true;
             this.markedForDeletion = true;
+            finalWaveReached = wave;
             
             shakeAmount = 30;
             SoundFX.stopMusic();
@@ -1177,9 +1204,9 @@
             this.radius = cfg.r;
             this.moveTimer = 0;
             this.dir = Math.random() > 0.5 ? 1 : -1;
+            this.hasSplit = false;
             this.isBoss = tier === 3;
             this.enteringTimer = 0;
-            this.hasSplit = false;
         }
 
         update() {
@@ -1412,18 +1439,18 @@
 
     class Golem extends Entity {
         constructor(x, y) {
-            const body = Bodies.rectangle(x, y, 75, 110, {
+            const body = Bodies.rectangle(x, y, 105, 150, {
                 inertia: Infinity,
                 restitution: 0.2,
                 friction: 0.3,
-                density: 0.005
+                density: 0.008
             });
-            super(body, 120, 'golem', 3.2);
+            super(body, 180, 'golem', 6.8);
             this.animTimer = 0;
             this.facing = 1;
             this.enteringTimer = 0;
             this.heldMob = null;
-            this.throwCooldown = 150;
+            this.throwCooldown = 80;
             this.windupTimer = 0;
             this.searchTimer = 0;
         }
@@ -1479,40 +1506,46 @@
                     this.windupTimer = 0;
                 } else {
                     Body.setPosition(this.heldMob.body, {
-                        x: pos.x + this.facing * 15,
-                        y: pos.y - 75
+                        x: pos.x + this.facing * 20,
+                        y: pos.y - 100
                     });
                     Body.setVelocity(this.heldMob.body, { x: 0, y: 0 });
 
                     this.windupTimer++;
-                    if (this.windupTimer >= 50) {
+                    if (this.windupTimer >= 24) {
                         const targetPos = player.body.position;
-                        const throwAngle = Math.atan2(targetPos.y - (pos.y - 75), targetPos.x - pos.x);
-                        const throwSpeed = 24;
+                        const throwAngle = Math.atan2(targetPos.y - (pos.y - 100), targetPos.x - pos.x);
+                        const throwSpeed = 34;
 
                         Body.setVelocity(this.heldMob.body, {
                             x: Math.cos(throwAngle) * throwSpeed,
                             y: Math.sin(throwAngle) * throwSpeed - 4
                         });
                         this.heldMob.body.isThrown = true;
+                        if (this.heldMob.type === 'player') {
+                            this.heldMob.takeDamage(20, this.body);
+                        }
                         this.heldMob = null;
                         this.windupTimer = 0;
-                        this.throwCooldown = 180;
+                        this.throwCooldown = 90;
                         SoundFX.playThrow();
-                        shakeAmount = Math.max(shakeAmount, 10);
+                        shakeAmount = Math.max(shakeAmount, 14);
                     }
                 }
             } else if (this.throwCooldown <= 0 && !this.isEntering) {
                 this.searchTimer = (this.searchTimer || 0) + 1;
-                if (this.searchTimer % 10 === 0) {
+                if (this.searchTimer % 8 === 0) {
                     for (let i = 0; i < entities.length; i++) {
                         const e = entities[i];
                         if (e !== this && 
                             !e.isDying && 
                             !e.markedForDeletion && 
-                            (e.type === 'slime' || e.type === 'zombie' || e.type === 'box') &&
+                            e.type !== 'golem' &&
+                            e.type !== 'spike_boss' &&
+                            e.type !== 'flail' &&
+                            !e.isBoss &&
                             (!player || player.grabbedEntity !== e) &&
-                            Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y) < 130) {
+                            Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y) < 160) {
                             this.heldMob = e;
                             this.windupTimer = 0;
                             break;
@@ -1521,7 +1554,7 @@
                 }
             }
 
-            const speed = this.heldMob ? 1.0 : 1.6;
+            const speed = this.heldMob ? 1.2 : 1.8;
             Body.setVelocity(this.body, { x: dir * speed, y: this.body.velocity.y });
             this.animTimer += 0.08;
         }
@@ -1547,111 +1580,111 @@
 
             ctx.fillStyle = rockDark;
             ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 5;
 
             // Left leg
             ctx.beginPath();
-            ctx.roundRect(-24 + walkCycle * 6, 38, 18, 20, [4, 4, 8, 8]);
+            ctx.roundRect(-34 + walkCycle * 8, 48, 26, 28, [6, 6, 10, 10]);
             ctx.fill();
             ctx.stroke();
 
             // Right leg
             ctx.beginPath();
-            ctx.roundRect(8 - walkCycle * 6, 38, 18, 20, [4, 4, 8, 8]);
+            ctx.roundRect(10 - walkCycle * 8, 48, 26, 28, [6, 6, 10, 10]);
             ctx.fill();
             ctx.stroke();
 
             // Torso
             ctx.fillStyle = rockMid;
             ctx.beginPath();
-            ctx.moveTo(-36, 38);
-            ctx.lineTo(-44, -15);
-            ctx.lineTo(-32, -35);
-            ctx.lineTo(32, -35);
-            ctx.lineTo(44, -15);
-            ctx.lineTo(36, 38);
+            ctx.moveTo(-50, 48);
+            ctx.lineTo(-62, -22);
+            ctx.lineTo(-44, -50);
+            ctx.lineTo(44, -50);
+            ctx.lineTo(62, -22);
+            ctx.lineTo(50, 48);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
 
             // Rock cracks
             ctx.strokeStyle = rockHighlight;
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 3.5;
             ctx.beginPath();
-            ctx.moveTo(-15, -10);
-            ctx.lineTo(0, -18);
-            ctx.lineTo(12, -8);
-            ctx.lineTo(8, 12);
+            ctx.moveTo(-22, -14);
+            ctx.lineTo(0, -26);
+            ctx.lineTo(18, -12);
+            ctx.lineTo(12, 16);
             ctx.stroke();
 
             // Head
             ctx.fillStyle = rockDark;
             ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.roundRect(-20 + dir * 5, -48, 38, 26, [8, 8, 4, 4]);
+            ctx.roundRect(-28 + dir * 6, -68, 54, 36, [10, 10, 6, 6]);
             ctx.fill();
             ctx.stroke();
 
             // Eyes
             ctx.fillStyle = '#f59e0b';
             ctx.shadowColor = '#f59e0b';
-            ctx.shadowBlur = 10;
-            ctx.fillRect(-10 + dir * 10, -41, 6, 4);
-            ctx.fillRect(2 + dir * 10, -41, 6, 4);
+            ctx.shadowBlur = 12;
+            ctx.fillRect(-14 + dir * 14, -58, 8, 6);
+            ctx.fillRect(4 + dir * 14, -58, 8, 6);
             ctx.shadowBlur = 0;
 
             // Arms
             ctx.fillStyle = rockMid;
             ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 5;
 
             if (this.heldMob) {
                 ctx.beginPath();
-                ctx.roundRect(-42, -65, 20, 48, 8);
+                ctx.roundRect(-58, -90, 28, 68, 10);
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.roundRect(22, -65, 20, 48, 8);
+                ctx.roundRect(30, -90, 28, 68, 10);
                 ctx.fill();
                 ctx.stroke();
 
-                if (this.windupTimer > 25) {
-                    ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+                if (this.windupTimer > 12) {
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
                     ctx.beginPath();
-                    ctx.arc(dir * 15, -75, 40 + Math.sin(Date.now() / 50) * 8, 0, Math.PI * 2);
+                    ctx.arc(dir * 20, -100, 52 + Math.sin(Date.now() / 40) * 10, 0, Math.PI * 2);
                     ctx.fill();
                 }
             } else {
-                const armOffset = walkCycle * 10;
+                const armOffset = walkCycle * 14;
 
                 ctx.beginPath();
-                ctx.roundRect(-46, -18 - armOffset, 20, 52, 10);
+                ctx.roundRect(-64, -26 - armOffset, 28, 72, 14);
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.fillStyle = rockDark;
                 ctx.beginPath();
-                ctx.arc(-36, 36 - armOffset, 14, 0, Math.PI * 2);
+                ctx.arc(-50, 48 - armOffset, 18, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.fillStyle = rockMid;
                 ctx.beginPath();
-                ctx.roundRect(26, -18 + armOffset, 20, 52, 10);
+                ctx.roundRect(36, -26 + armOffset, 28, 72, 14);
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.fillStyle = rockDark;
                 ctx.beginPath();
-                ctx.arc(36, 36 + armOffset, 14, 0, Math.PI * 2);
+                ctx.arc(50, 48 + armOffset, 18, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
             }
 
             ctx.restore();
-            this.drawHpBar(ctx, 65);
+            this.drawHpBar(ctx, 88);
         }
     }
 
@@ -1847,34 +1880,497 @@
         }
     }
 
+    class Bone extends Entity {
+        constructor(x, y, owner = null) {
+            const body = Bodies.rectangle(x, y, 42, 14, {
+                restitution: 0.4,
+                friction: 0.15,
+                density: 0.003
+            });
+            super(body, 1, 'bone', 0.9);
+            this.owner = owner;
+            this.isBoomerang = false;
+            this.spinAngle = 0;
+            this.flightTimer = 0;
+            this.maxFlightTimer = 85;
+            this.canBeGrabbed = true;
+            this.isBroken = false;
+            this.durability = 3; // Allows multiple hits/throws before breaking
+            this.lifespan = 600; // Despawn after 10 seconds (60fps * 10)
+            this.maxLifespan = 600;
+        }
+
+        update() {
+            if (this.isDying || this.markedForDeletion) return;
+
+            const pos = this.body.position;
+            if (pos.y > 1050 || pos.x < -200 || pos.x > 1640) {
+                this.die();
+                return;
+            }
+
+            // Despawn countdown after 10 seconds (pause countdown while actively being held by psychic energy)
+            const isHeld = player && player.grabbedEntity === this;
+            if (!isHeld) {
+                this.lifespan--;
+                if (this.lifespan <= 0) {
+                    this.die();
+                    return;
+                }
+            }
+
+            // Spin animation while moving
+            if (Math.abs(this.body.velocity.x) > 0.8 || Math.abs(this.body.velocity.y) > 0.8) {
+                this.spinAngle += 0.22;
+                Body.setAngle(this.body, this.spinAngle);
+            }
+        }
+
+        breakBone() {
+            if (this.isBroken || this.isDying) return;
+            this.durability--;
+            if (this.durability <= 0) {
+                this.isBroken = true;
+                if (this.owner) {
+                    this.owner.activeBone = null;
+                }
+                SoundFX.playBoneClack();
+                // Strictly 3 particles per bone
+                createExplosion(this.body.position.x, this.body.position.y, '#f8fafc', 3);
+                this.die();
+            } else {
+                // Play impact clack on intermediate chip hit with strictly 3 particles
+                SoundFX.playBoneClack();
+                createExplosion(this.body.position.x, this.body.position.y, '#f8fafc', 3);
+            }
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(this.body.angle);
+
+            // Subtle blink warning during the last 2 seconds before despawn
+            if (this.lifespan < 120 && Math.floor(this.lifespan / 10) % 2 === 0) {
+                ctx.globalAlpha = 0.35;
+            }
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+
+            // Curved boomerang shaft
+            ctx.beginPath();
+            ctx.moveTo(-18, 0);
+            ctx.quadraticCurveTo(0, -6, 18, 0);
+            ctx.quadraticCurveTo(0, 4, -18, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // End Knobs
+            ctx.beginPath();
+            ctx.arc(-17, -3, 3.5, 0, Math.PI * 2);
+            ctx.arc(-17, 3, 3.5, 0, Math.PI * 2);
+            ctx.arc(17, -3, 3.5, 0, Math.PI * 2);
+            ctx.arc(17, 3, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    }
+
+    class SkeletonCollapse {
+        constructor(x, y, facing) {
+            this.life = 75;
+            this.maxLife = 75;
+            this.bones = [
+                { type: 'skull', x: x, y: y - 36, vx: (Math.random() - 0.5) * 5 + facing * 2, vy: -7 - Math.random() * 4, rot: 0, vRot: (Math.random() - 0.5) * 0.25 },
+                { type: 'ribs', x: x, y: y - 10, vx: (Math.random() - 0.5) * 4, vy: -5 - Math.random() * 3, rot: 0, vRot: (Math.random() - 0.5) * 0.18 },
+                { type: 'pelvis', x: x, y: y + 15, vx: (Math.random() - 0.5) * 3, vy: -3 - Math.random() * 3, rot: 0, vRot: (Math.random() - 0.5) * 0.15 },
+                { type: 'limb', w: 22, x: x - 12, y: y - 8, vx: -3 - Math.random() * 3, vy: -6 - Math.random() * 4, rot: 0, vRot: -0.2 },
+                { type: 'limb', w: 22, x: x + 12, y: y - 8, vx: 3 + Math.random() * 3, vy: -6 - Math.random() * 4, rot: 0, vRot: 0.2 },
+                { type: 'limb', w: 26, x: x - 8, y: y + 35, vx: -2 - Math.random() * 2, vy: -4 - Math.random() * 3, rot: 0, vRot: -0.15 },
+                { type: 'limb', w: 26, x: x + 8, y: y + 35, vx: 2 + Math.random() * 2, vy: -4 - Math.random() * 3, rot: 0, vRot: 0.15 }
+            ];
+        }
+
+        update() {
+            this.life--;
+            for (let i = 0; i < this.bones.length; i++) {
+                const b = this.bones[i];
+                b.vy += 0.45; // Gravity
+                b.x += b.vx;
+                b.y += b.vy;
+                b.rot += b.vRot;
+
+                if (b.y > 880) {
+                    b.y = 880;
+                    b.vy *= -0.35;
+                    b.vx *= 0.75;
+                    b.vRot *= 0.6;
+                }
+            }
+        }
+
+        draw(ctx) {
+            const alpha = Math.max(0, this.life / this.maxLife);
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            for (let i = 0; i < this.bones.length; i++) {
+                const b = this.bones[i];
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                ctx.rotate(b.rot);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 3.5;
+                ctx.lineCap = 'round';
+
+                if (b.type === 'skull') {
+                    // Cranium
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Eye sockets
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(-5, -2, 3.5, 0, Math.PI * 2);
+                    ctx.arc(5, -2, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Detached jaw
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.roundRect(-7, 8, 14, 6, 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (b.type === 'ribs') {
+                    ctx.beginPath();
+                    ctx.roundRect(-12, -10, 24, 20, 6);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -4);
+                    ctx.lineTo(10, -4);
+                    ctx.moveTo(-10, 2);
+                    ctx.lineTo(10, 2);
+                    ctx.stroke();
+                } else if (b.type === 'pelvis') {
+                    ctx.beginPath();
+                    ctx.roundRect(-12, -4, 24, 10, 4);
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    // Limb bone segment
+                    ctx.beginPath();
+                    ctx.roundRect(-b.w / 2, -3, b.w, 6, 3);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Bone end knobs
+                    ctx.beginPath();
+                    ctx.arc(-b.w / 2, -4, 4, 0, Math.PI * 2);
+                    ctx.arc(-b.w / 2, 4, 4, 0, Math.PI * 2);
+                    ctx.arc(b.w / 2, -4, 4, 0, Math.PI * 2);
+                    ctx.arc(b.w / 2, 4, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    class Skeleton extends Entity {
+        constructor(x, y) {
+            const body = Bodies.rectangle(x, y, 42, 110, {
+                inertia: Infinity,
+                restitution: 0.2,
+                friction: 0.15,
+                density: 0.002
+            });
+            super(body, 60, 'skeleton', 1.3);
+            this.animTimer = 0;
+            this.facing = 1;
+            this.enteringTimer = 0;
+            this.hasBone = true;
+            this.throwCooldown = 45;
+            this.activeBone = null;
+        }
+
+        update() {
+            const pos = this.body.position;
+
+            if (this.spawnGraceTimer > 0) {
+                this.spawnGraceTimer--;
+            }
+
+            if (this.isEntering) {
+                this.enteringTimer++;
+                if (pos.x >= 60 && pos.x <= 1380) {
+                    this.isEntering = false;
+                    this.spawnGraceTimer = 0;
+                } else if (this.enteringTimer > 300) {
+                    if (pos.x < 60) Matter.Body.setPosition(this.body, { x: 80, y: Math.min(pos.y, 820) });
+                    else if (pos.x > 1380) Matter.Body.setPosition(this.body, { x: 1360, y: Math.min(pos.y, 820) });
+                    this.isEntering = false;
+                    this.spawnGraceTimer = 0;
+                }
+            }
+
+            if (this.spawnGraceTimer <= 0) {
+                if (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590))) {
+                    this.die();
+                    return;
+                }
+            }
+
+            const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
+            if (isMidAir) return;
+
+            if (!player || player.isDying) return;
+
+            const px = player.body.position.x;
+            const distToSteve = Math.abs(px - pos.x);
+            this.facing = px > pos.x ? 1 : -1;
+
+            if (this.throwCooldown > 0) {
+                this.throwCooldown--;
+                // Infinite reload: equip a new bone when cooldown nears completion
+                if (this.throwCooldown <= 30 && !this.hasBone) {
+                    this.hasBone = true;
+                }
+            }
+
+            // Skeletons are deliberate, methodical long-range snipers
+            let vx = 0;
+            const preferredMinRange = 300;
+            const preferredMaxRange = 540;
+
+            if (distToSteve < preferredMinRange) {
+                // Backpedal slowly away from Steve
+                vx = -this.facing * 1.0;
+            } else if (distToSteve > preferredMaxRange) {
+                // Walk slowly into long range
+                vx = this.facing * 1.1;
+            } else {
+                vx = 0;
+            }
+
+            // Throw bone directly at Steve when ready
+            if (this.hasBone && this.throwCooldown <= 0 && !this.isEntering) {
+                this.throwBone();
+            }
+
+            Body.setVelocity(this.body, { x: vx, y: this.body.velocity.y });
+            if (Math.abs(vx) > 0.1) {
+                this.animTimer += 0.06;
+            } else {
+                this.animTimer = 0;
+            }
+        }
+
+        throwBone() {
+            if (!this.hasBone || !player || player.isDying) return;
+            this.hasBone = false;
+            this.throwCooldown = 95; // Reload cooldown timer
+
+            const pos = this.body.position;
+            const spawnX = pos.x + this.facing * 24;
+            const spawnY = pos.y - 18;
+
+            const bone = new Bone(spawnX, spawnY, this);
+            bone.isBoomerang = false;
+            this.activeBone = bone;
+
+            // Direct line-of-sight vector with an upward arc
+            const targetX = player.body.position.x;
+            const targetY = player.body.position.y - 10;
+            const dx = targetX - spawnX;
+            const dy = targetY - spawnY;
+            const dist = Math.hypot(dx, dy) || 1;
+            const throwSpeed = 18.5;
+
+            // Arc up slightly before descending toward the player
+            const arcLift = -6.2;
+
+            Body.setVelocity(bone.body, {
+                x: (dx / dist) * throwSpeed,
+                y: (dy / dist) * throwSpeed + arcLift
+            });
+
+            SoundFX.playBoneClack();
+            SoundFX.playThrow();
+        }
+
+        die(sourceBody = null) {
+            if (this.isDying) return;
+            const pos = { x: this.body.position.x, y: this.body.position.y };
+
+            // Always drop a loose bone onto the floor for Steve
+            const droppedBone = new Bone(pos.x, pos.y - 10, null);
+            droppedBone.isBoomerang = false;
+            Body.setVelocity(droppedBone.body, {
+                x: (Math.random() - 0.5) * 4,
+                y: -4
+            });
+
+            // Trigger skeleton disassembly collapse animation
+            collapsingSkeletons.push(new SkeletonCollapse(pos.x, pos.y, this.facing));
+            SoundFX.playBoneClack();
+
+            super.die(sourceBody);
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+
+            const dir = this.facing;
+            const walk = Math.sin(this.animTimer);
+
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 4.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.fillStyle = '#ffffff';
+
+            // Head (Skull)
+            ctx.beginPath();
+            ctx.arc(dir * 6, -38, 17, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Jaw outline
+            ctx.beginPath();
+            ctx.roundRect(dir * 2, -26, 12 * dir, 7, 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Eye Sockets (Deep hollow black)
+            ctx.fillStyle = '#0f172a';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(dir * 10, -40, 3.8, 0, Math.PI * 2);
+            ctx.arc(dir * 3, -40, 3.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Spine & Ribcage
+            ctx.beginPath();
+            ctx.moveTo(0, -21);
+            ctx.lineTo(0, 18);
+            ctx.stroke();
+
+            // Ribs
+            for (let r = -12; r <= 8; r += 7) {
+                ctx.beginPath();
+                ctx.moveTo(-13, r);
+                ctx.lineTo(13, r);
+                ctx.stroke();
+            }
+
+            // Pelvis
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.roundRect(-12, 14, 24, 8, 3);
+            ctx.fill();
+            ctx.stroke();
+
+            // Legs
+            const legSwing = walk * 14;
+            ctx.beginPath();
+            ctx.moveTo(-6, 22);
+            ctx.lineTo(-8 - legSwing, 40);
+            ctx.lineTo(-6 - legSwing, 55);
+            ctx.moveTo(6, 22);
+            ctx.lineTo(8 + legSwing, 40);
+            ctx.lineTo(6 + legSwing, 55);
+            ctx.stroke();
+
+            // Arms
+            ctx.beginPath();
+            ctx.moveTo(0, -14);
+            ctx.lineTo(-14, 4);
+            ctx.lineTo(-10, 20);
+            ctx.stroke();
+
+            // Front Arm / Hand holding Bone
+            ctx.beginPath();
+            ctx.moveTo(0, -14);
+            if (this.hasBone) {
+                ctx.lineTo(dir * 18, -4);
+                ctx.lineTo(dir * 24, -14);
+                ctx.stroke();
+
+                // Bone held in hand
+                ctx.save();
+                ctx.translate(dir * 24, -14);
+                ctx.rotate(dir * 0.45);
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.roundRect(-4, -14, 8, 28, 4);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(-5, -13, 3, 0, Math.PI * 2);
+                ctx.arc(5, -13, 3, 0, Math.PI * 2);
+                ctx.arc(-5, 13, 3, 0, Math.PI * 2);
+                ctx.arc(5, 13, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            } else {
+                ctx.lineTo(dir * 14, 4);
+                ctx.lineTo(dir * 10, 20);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+            this.drawHpBar(ctx, 65);
+        }
+    }
+
     class SpikeBoss extends Entity {
         constructor(x, y) {
-            // Main central boss body
-            const body = Bodies.circle(x, y, 65, {
+            // Main central boss body (scaled up)
+            const body = Bodies.circle(x, y, 88, {
                 inertia: Infinity,
                 frictionAir: 0.08,
-                density: 0.008
+                density: 0.01
             });
-            super(body, 250, 'spike_boss', 9.0);
-            this.radius = 65;
+            super(body, 280, 'spike_boss', 11.0);
+            this.radius = 88;
             this.canBeGrabbed = false;
             this.isEntering = false;
             this.angle = 0;
-            this.rotationSpeed = 0.038;
-            this.chainLength = 175;
+            this.rotationSpeed = 0.065; // Swings faster and more aggressively
+            this.chainLength = 220;     // Extended reach
             this.hitCooldown = 0;
             this.hoverTimer = 0;
 
-            // Swinging heavy satellite flail
+            // Swinging heavy satellite flail (scaled up)
             const flailX = x + Math.cos(this.angle) * this.chainLength;
             const flailY = y + Math.sin(this.angle) * this.chainLength;
-            const flailBody = Bodies.circle(flailX, flailY, 32, {
-                density: 0.008,
-                restitution: 0.4,
+            const flailBody = Bodies.circle(flailX, flailY, 44, {
+                density: 0.01,
+                restitution: 0.45,
                 friction: 0.1
             });
             flailBody.isFlail = true;
-            this.flailEntity = new Entity(flailBody, 99999, 'flail', 4.5);
+            this.flailEntity = new Entity(flailBody, 99999, 'flail', 5.2);
             this.flailEntity.canBeGrabbed = true;
             this.flailEntity.bossParent = this;
         }
@@ -1887,9 +2383,9 @@
                     this.hp -= amount;
                     SoundFX.playHit();
                     SoundFX.playExplosion(0.8);
-                    shakeAmount = Math.max(shakeAmount, 22);
-                    createExplosion(this.body.position.x, this.body.position.y, '#f59e0b', 25);
-                    createExplosion(this.body.position.x, this.body.position.y, '#e11d48', 20);
+                    shakeAmount = Math.max(shakeAmount, 24);
+                    createExplosion(this.body.position.x, this.body.position.y, '#f59e0b', 30);
+                    createExplosion(this.body.position.x, this.body.position.y, '#e11d48', 25);
 
                     if (this.hp <= 0) {
                         this.hp = 0;
@@ -1904,8 +2400,8 @@
             if (this.flailEntity && !this.flailEntity.isDying) {
                 this.flailEntity.die();
             }
-            SoundFX.playExplosion(2.0);
-            shakeAmount = 35;
+            SoundFX.playExplosion(2.2);
+            shakeAmount = 40;
             super.die(sourceBody);
         }
 
@@ -1916,18 +2412,18 @@
             if (this.hitCooldown > 0) this.hitCooldown--;
 
             // Hover and track player smoothly across upper arena
-            this.hoverTimer += 0.03;
+            this.hoverTimer += 0.035;
             let targetX = 720;
-            let targetY = 330 + Math.sin(this.hoverTimer) * 60;
+            let targetY = 310 + Math.sin(this.hoverTimer) * 75;
             if (player && !player.isDying) {
                 targetX = Math.max(260, Math.min(1180, player.body.position.x));
             }
 
-            const hoverDx = (targetX - pos.x) * 0.025;
-            const hoverDy = (targetY - pos.y) * 0.025;
+            const hoverDx = (targetX - pos.x) * 0.028;
+            const hoverDy = (targetY - pos.y) * 0.028;
             Body.setVelocity(this.body, { x: hoverDx, y: hoverDy });
 
-            // Swing satellite flail in continuous orbit around the boss
+            // Swing satellite flail in faster continuous orbit around the boss
             this.angle += this.rotationSpeed;
             if (this.flailEntity && !this.flailEntity.isDying) {
                 const fb = this.flailEntity.body;
@@ -1936,38 +2432,38 @@
                 const idealFlailX = pos.x + Math.cos(this.angle) * this.chainLength;
                 const idealFlailY = pos.y + Math.sin(this.angle) * this.chainLength;
 
-                // When not being held/dragged by psychic power, orbit tightly
+                // When not being held/dragged by psychic power, orbit tightly and swiftly
                 const isHeld = player && player.grabbedEntity === this.flailEntity;
                 if (!isHeld) {
                     const toIdealX = idealFlailX - fb.position.x;
                     const toIdealY = idealFlailY - fb.position.y;
                     Body.setVelocity(fb, {
-                        x: fb.velocity.x * 0.8 + toIdealX * 0.12,
-                        y: fb.velocity.y * 0.8 + toIdealY * 0.12
+                        x: fb.velocity.x * 0.75 + toIdealX * 0.16,
+                        y: fb.velocity.y * 0.75 + toIdealY * 0.16
                     });
                 } else {
                     // Pull back towards tether radius if stretched too far
                     const distToBoss = Math.hypot(fb.position.x - pos.x, fb.position.y - pos.y);
-                    if (distToBoss > this.chainLength * 1.6) {
+                    if (distToBoss > this.chainLength * 1.5) {
                         const pullAngle = Math.atan2(pos.y - fb.position.y, pos.x - fb.position.x);
                         Body.applyForce(fb, fb.position, {
-                            x: Math.cos(pullAngle) * 0.08,
-                            y: Math.sin(pullAngle) * 0.08
+                            x: Math.cos(pullAngle) * 0.11,
+                            y: Math.sin(pullAngle) * 0.11
                         });
                     }
                 }
 
                 // Check collision between heavy flail and central core
                 const distToCore = Math.hypot(fb.position.x - pos.x, fb.position.y - pos.y);
-                if (distToCore < this.radius + 32) {
+                if (distToCore < this.radius + 44) {
                     const flailSpeed = Math.hypot(fb.velocity.x, fb.velocity.y);
                     if (flailSpeed > 3.5 || isHeld) {
                         this.takeDamage(35, fb);
                         // Bounce the flail outward after successful hit
                         const bounceAngle = Math.atan2(fb.position.y - pos.y, fb.position.x - pos.x);
                         Body.setVelocity(fb, {
-                            x: Math.cos(bounceAngle) * 16,
-                            y: Math.sin(bounceAngle) * 16
+                            x: Math.cos(bounceAngle) * 18,
+                            y: Math.sin(bounceAngle) * 18
                         });
                     }
                 }
@@ -1978,7 +2474,7 @@
                 const ent = entities[i];
                 if (ent && !ent.isDying && !ent.markedForDeletion && (ent.type === 'box' || ent.type === 'bomb')) {
                     const d = Math.hypot(ent.body.position.x - pos.x, ent.body.position.y - pos.y);
-                    if (d < this.radius + 30) {
+                    if (d < this.radius + 36) {
                         ent.markedForDeletion = true;
                         ent.isDying = true;
                         SoundFX.playExplosion(0.7);
@@ -1994,9 +2490,9 @@
             // Draw chain links to flail
             if (this.flailEntity && !this.flailEntity.isDying) {
                 const fpos = this.flailEntity.body.position;
-                const linkCount = 8;
+                const linkCount = 10;
                 ctx.strokeStyle = '#475569';
-                ctx.lineWidth = 5;
+                ctx.lineWidth = 6;
                 ctx.beginPath();
                 ctx.moveTo(pos.x, pos.y);
                 ctx.lineTo(fpos.x, fpos.y);
@@ -2007,49 +2503,49 @@
                     const ly = pos.y + (fpos.y - pos.y) * (i / linkCount);
                     ctx.fillStyle = '#64748b';
                     ctx.beginPath();
-                    ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
+                    ctx.arc(lx, ly, 6, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
-                // Draw swinging faceless spike flail
+                // Draw swinging faceless spike flail (larger)
                 ctx.save();
                 ctx.translate(fpos.x, fpos.y);
                 const spikeCountFlail = 8;
                 for (let i = 0; i < spikeCountFlail; i++) {
-                    const ang = (i / spikeCountFlail) * Math.PI * 2 + this.angle * 2;
+                    const ang = (i / spikeCountFlail) * Math.PI * 2 + this.angle * 2.2;
                     ctx.fillStyle = '#334155';
                     ctx.beginPath();
-                    ctx.moveTo(Math.cos(ang - 0.25) * 28, Math.sin(ang - 0.25) * 28);
-                    ctx.lineTo(Math.cos(ang) * 48, Math.sin(ang) * 48);
-                    ctx.lineTo(Math.cos(ang + 0.25) * 28, Math.sin(ang + 0.25) * 28);
+                    ctx.moveTo(Math.cos(ang - 0.25) * 38, Math.sin(ang - 0.25) * 38);
+                    ctx.lineTo(Math.cos(ang) * 62, Math.sin(ang) * 62);
+                    ctx.lineTo(Math.cos(ang + 0.25) * 38, Math.sin(ang + 0.25) * 38);
                     ctx.closePath();
                     ctx.fill();
                 }
                 ctx.fillStyle = '#1e293b';
                 ctx.strokeStyle = '#94a3b8';
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.arc(0, 0, 32, 0, Math.PI * 2);
+                ctx.arc(0, 0, 44, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
                 ctx.restore();
             }
 
-            // Draw Central Spike Core
+            // Draw Central Spike Core (enlarged)
             ctx.save();
             ctx.translate(pos.x, pos.y);
 
             // Spikes around central body
-            const spikeCount = 12;
+            const spikeCount = 14;
             for (let i = 0; i < spikeCount; i++) {
                 const ang = (i / spikeCount) * Math.PI * 2 + this.angle;
                 ctx.fillStyle = '#1e293b';
                 ctx.strokeStyle = '#64748b';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 2.5;
                 ctx.beginPath();
-                ctx.moveTo(Math.cos(ang - 0.2) * (this.radius - 2), Math.sin(ang - 0.2) * (this.radius - 2));
-                ctx.lineTo(Math.cos(ang) * (this.radius + 32), Math.sin(ang) * (this.radius + 32));
-                ctx.lineTo(Math.cos(ang + 0.2) * (this.radius - 2), Math.sin(ang + 0.2) * (this.radius - 2));
+                ctx.moveTo(Math.cos(ang - 0.2) * (this.radius - 3), Math.sin(ang - 0.2) * (this.radius - 3));
+                ctx.lineTo(Math.cos(ang) * (this.radius + 40), Math.sin(ang) * (this.radius + 40));
+                ctx.lineTo(Math.cos(ang + 0.2) * (this.radius - 3), Math.sin(ang + 0.2) * (this.radius - 3));
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
@@ -2058,57 +2554,56 @@
             // Dark iron center sphere
             ctx.fillStyle = '#0f172a';
             ctx.strokeStyle = '#cbd5e1';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 5;
             ctx.beginPath();
             ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
             // Menacing Face on central sphere
-            // Evil slitted glowing red eyes
             ctx.fillStyle = '#ef4444';
             ctx.shadowColor = '#ef4444';
-            ctx.shadowBlur = 14;
+            ctx.shadowBlur = 18;
 
             ctx.beginPath();
-            ctx.moveTo(-32, -18);
-            ctx.lineTo(-12, -10);
-            ctx.lineTo(-28, -2);
+            ctx.moveTo(-44, -24);
+            ctx.lineTo(-16, -14);
+            ctx.lineTo(-38, -2);
             ctx.closePath();
             ctx.fill();
 
             ctx.beginPath();
-            ctx.moveTo(32, -18);
-            ctx.lineTo(12, -10);
-            ctx.lineTo(28, -2);
+            ctx.moveTo(44, -24);
+            ctx.lineTo(16, -14);
+            ctx.lineTo(38, -2);
             ctx.closePath();
             ctx.fill();
 
             // Pupil gleams
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(-22, -12, 4, 4);
-            ctx.fillRect(18, -12, 4, 4);
+            ctx.fillRect(-30, -16, 5, 5);
+            ctx.fillRect(25, -16, 5, 5);
             ctx.shadowBlur = 0;
 
             // Jagged grinning mouth
             ctx.fillStyle = '#b91c1c';
             ctx.beginPath();
-            ctx.arc(0, 16, 26, 0.1, Math.PI - 0.1);
+            ctx.arc(0, 22, 36, 0.1, Math.PI - 0.1);
             ctx.closePath();
             ctx.fill();
 
             // Sharp teeth
             ctx.fillStyle = '#f8fafc';
             ctx.beginPath();
-            for (let t = -20; t <= 20; t += 10) {
-                ctx.moveTo(t, 16);
-                ctx.lineTo(t + 4, 25);
-                ctx.lineTo(t + 8, 16);
+            for (let t = -28; t <= 28; t += 14) {
+                ctx.moveTo(t, 22);
+                ctx.lineTo(t + 6, 35);
+                ctx.lineTo(t + 12, 22);
             }
             ctx.fill();
 
             ctx.restore();
-            this.drawHpBar(ctx, this.radius + 20);
+            this.drawHpBar(ctx, this.radius + 26);
         }
     }
 
@@ -2155,7 +2650,7 @@
         }
 
         takeDamage(amount, sourceBody = null) {
-            if (this.isDying) return;
+            if (this.isDying || this.markedForDeletion) return;
             // Only detonate on damage if explicitly flung by Steve at high velocity or forced purge
             if ((this.flungByPlayer && this.body.isThrown) || amount >= 1000) {
                 this.explode();
@@ -2163,6 +2658,7 @@
         }
 
         update() {
+            if (this.isDying || this.markedForDeletion) return;
             this.timer--;
             if (this.timer <= 0) {
                 this.explode();
@@ -2170,8 +2666,12 @@
         }
 
         explode() {
-            if (this.isDying) return;
-            const pos = this.body.position;
+            if (this.isDying || this.markedForDeletion) return;
+            // Immediately mark as dying and deleted to break recursive detonation cycles
+            this.isDying = true;
+            this.markedForDeletion = true;
+
+            const pos = { x: this.body.position.x, y: this.body.position.y };
             createExplosion(pos.x, pos.y, '#FF4500', 60);
             createExplosion(pos.x, pos.y, '#FFD700', 40);
             SoundFX.playExplosion(1.5);
@@ -2179,7 +2679,7 @@
 
             const radius = 250;
             entities.forEach(e => {
-                if (e !== this && !e.isDying) {
+                if (e !== this && !e.isDying && !e.markedForDeletion) {
                     const dist = Vector.magnitude(Vector.sub(e.body.position, pos));
                     if (dist < radius) {
                         e.takeDamage(50, this.body);
@@ -2188,8 +2688,6 @@
                     }
                 }
             });
-
-            this.die();
         }
 
         die(sourceBody = null) {
@@ -2326,6 +2824,7 @@
         Engine.clear(engine);
         entities = [];
         particles = [];
+        collapsingSkeletons = [];
         wave = 1;
         playerDeathFade = 0;
         mouse.isDown = false;
@@ -2356,7 +2855,7 @@
         player = new Player(720, 300);
 
         if (gameStarted) {
-            spawnWave();
+            prepareWave();
         }
     }
 
@@ -2364,20 +2863,27 @@
     const WAVE_CONFIGS = {
         1: { title: "THE AWAKENING", zombies: 3, slimes: 0, maws: 0, boxes: 1, bombs: 0 },
         2: { title: "GREEN OOZE", zombies: 3, slimes: 3, maws: 0, boxes: 2, bombs: 0 },
-        3: { title: "SWARM RISING", zombies: 6, slimes: 4, maws: 0, boxes: 2, bombs: 1 },
+        3: { title: "BONE BRIGADE", skeletons: 5, zombies: 0, slimes: 0, maws: 0, boxes: 2, bombs: 1 },
         4: { title: "SLIME INVASION", zombies: 0, slimes: 12, maws: 0, boxes: 1, bombs: 2 },
         5: { title: "WALKING DEAD", zombies: 12, slimes: 3, maws: 0, boxes: 3, bombs: 1 },
-        6: { title: "CHOMPER INVASION", zombies: 8, slimes: 8, maws: 2, boxes: 2, bombs: 2 },
+        6: { title: "CHOMPER INVASION", zombies: 8, slimes: 6, maws: 2, boxes: 2, bombs: 2 },
         7: { title: "SIEGE OF THE HORDE", zombies: 14, slimes: 8, maws: 0, boxes: 3, bombs: 2 },
-        8: { title: "CROSSFIRE", zombies: 16, slimes: 10, maws: 0, boxes: 4, bombs: 3 },
-        9: { title: "TITAN'S HEAVE", golem: 1, zombies: 10, slimes: 0, maws: 0, boxes: 1, bombs: 2 },
-        10: { title: "ROYAL GELATIN", boss: true, zombies: 6, slimes: 4, maws: 0, boxes: 3, bombs: 2 },
+        8: { title: "CROSSFIRE", skeletons: 2, zombies: 16, slimes: 10, maws: 0, boxes: 4, bombs: 3 },
+        9: { title: "TITAN'S HEAVE", skeletons: 1, golem: 2, zombies: 10, slimes: 0, maws: 0, boxes: 1, bombs: 2 },
+        10: { title: "ROYAL GELATIN", boss: true, zombies: 0, slimes: 4, maws: 0, boxes: 3, bombs: 2 },
         11: { title: "COLOSSAL SIEGE", golem: 3, zombies: 20, slimes: 0, maws: 0, boxes: 1, bombs: 2 },
-        12: { title: "CARNAGE VALLEY", golem: 5, zombies: 5, slimes: 0, maws: 10, boxes: 1, bombs: 2 },
+        12: { title: "CARNAGE VALLEY", skeletons: 5, golem: 5, zombies: 5, slimes: 0, maws: 10, boxes: 1, bombs: 2 },
         13: { title: "TWIN ROYALS", slimeBosses: 2, zombies: 0, slimes: 0, maws: 0, boxes: 2, bombs: 0 },
         14: { title: "ARMORED FRENZY", golem: 5, zombies: 0, slimes: 0, maws: 15, boxes: 1, bombs: 2 },
         15: { title: "IRON JUGGERNAUT", spikeBoss: true, zombies: 0, slimes: 0, maws: 0, boxes: 0, bombs: 0 }
     };
+
+    function prepareWave() {
+        waveTimer = 0;
+        waveBannerTimer = WAVE_BANNER_DURATION;
+        isWavePendingSpawn = true;
+        SoundFX.playWaveStart();
+    }
 
     function startGame() {
         SoundFX.init();
@@ -2396,10 +2902,7 @@
     }
 
     function spawnWave() {
-        waveTimer = 0;
-        waveBannerTimer = WAVE_BANNER_DURATION;
-        SoundFX.playWaveStart();
-
+        isWavePendingSpawn = false;
         let config = WAVE_CONFIGS[wave];
         if (!config) {
             // Endless scaling after Level 15
@@ -2461,6 +2964,19 @@
             Matter.Body.setVelocity(maw.body, { x: dir * 2.8, y: -0.5 });
         }
 
+        for (let i = 0; i < (config.skeletons || 0); i++) {
+            const spawnY = safeSpawnHeights[Math.floor(Math.random() * safeSpawnHeights.length)];
+            const fromLeft = Math.random() < 0.5;
+            const x = fromLeft ? -50 : 1490;
+            const skel = new Skeleton(x, spawnY);
+            skel.isEntering = true;
+            skel.spawnGraceTimer = 120;
+            const dir = fromLeft ? 1 : -1;
+            skel.dir = dir;
+            skel.facing = dir;
+            Matter.Body.setVelocity(skel.body, { x: dir * 2.4, y: -0.5 });
+        }
+
         for (let i = 0; i < (config.zombies || 0); i++) {
             const spawnY = safeSpawnHeights[Math.floor(Math.random() * safeSpawnHeights.length)];
             const fromLeft = Math.random() < 0.5;
@@ -2500,6 +3016,7 @@
     // --- INPUT HANDLING ---
 
     window.addEventListener('keydown', e => {
+        isMobileDevice = false;
         if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
     });
     window.addEventListener('keyup', e => {
@@ -2507,6 +3024,7 @@
     });
     
     function updateMousePos(e) {
+        isMobileDevice = false;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -2517,6 +3035,7 @@
     canvas.addEventListener('mousemove', updateMousePos);
 
     canvas.addEventListener('mousedown', (e) => {
+        isMobileDevice = false;
         if (e.button === 0) {
             SoundFX.init();
             updateMousePos(e);
@@ -2823,6 +3342,54 @@
                 }
             }
 
+            // Skeleton contact damage
+            if (entA.type === 'skeleton' && entB.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(7, entA.body);
+                    applyPlayerHurtKnockback(entA.body);
+                }
+            }
+            if (entB.type === 'skeleton' && entA.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(7, entB.body);
+                    applyPlayerHurtKnockback(entB.body);
+                }
+            }
+
+            // Bone collision with player (when flying from skeleton throw or Steve's throw)
+            if (entA.type === 'bone' && entB.type === 'player') {
+                const isFlying = Math.hypot(bodyA.velocity.x, bodyA.velocity.y) > 6 || bodyA.isThrown;
+                if (player.invulnerableTimer <= 0 && isFlying) {
+                    player.takeDamage(10, entA.body);
+                    applyPlayerHurtKnockback(entA.body);
+                    entA.breakBone();
+                }
+            }
+            if (entB.type === 'bone' && entA.type === 'player') {
+                const isFlying = Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 6 || bodyB.isThrown;
+                if (player.invulnerableTimer <= 0 && isFlying) {
+                    player.takeDamage(10, entB.body);
+                    applyPlayerHurtKnockback(entB.body);
+                    entB.breakBone();
+                }
+            }
+
+            // Friendly fire guard: bones ignore all skeleton allies and owners
+            if (entA.type === 'bone' && entB.type === 'skeleton' && entA.owner) {
+                return;
+            }
+            if (entB.type === 'bone' && entA.type === 'skeleton' && entB.owner) {
+                return;
+            }
+
+            // Ensure bone never damages its owner on collision
+            if (entA.type === 'bone' && entB === entA.owner) {
+                return;
+            }
+            if (entB.type === 'bone' && entA === entB.owner) {
+                return;
+            }
+
             // Bomb collision
             if (isStart) {
                 if ((entA.type === 'bomb' && bodyA.isThrown) ||
@@ -2843,7 +3410,26 @@
         }
 
         const relVel = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
-        const HIGH_VELOCITY_THRESHOLD = 11;
+        const MINOR_VELOCITY_THRESHOLD = 6;
+        const HIGH_VELOCITY_THRESHOLD = 15;
+
+        // Bone impact against enemies or Steve
+        if (entA && entA.type === 'bone' && (bodyA.isThrown || Math.hypot(bodyA.velocity.x, bodyA.velocity.y) > 7)) {
+            if (entB && (entB === entA.owner || (entA.owner && entB.type === 'skeleton'))) return;
+            if (entB) {
+                entB.takeDamage(10, bodyA);
+                entA.breakBone();
+                return;
+            }
+        }
+        if (entB && entB.type === 'bone' && (bodyB.isThrown || Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 7)) {
+            if (entA && (entA === entB.owner || (entB.owner && entA.type === 'skeleton'))) return;
+            if (entA) {
+                entA.takeDamage(10, bodyB);
+                entB.breakBone();
+                return;
+            }
+        }
 
         // Bombs only detonate on impact if flung by the player at high velocity
         if (entA && entA.type === 'bomb') {
@@ -2859,37 +3445,59 @@
             }
         }
 
-        if (relVel <= HIGH_VELOCITY_THRESHOLD) return;
+        // Ignore soft bumps and small shoves completely
+        if (relVel <= MINOR_VELOCITY_THRESHOLD) return;
+
+        // Calculate graduated damage: minor impacts deliver chip damage; high-speed slams deliver heavy damage
+        let baseDmg = 0;
+        if (relVel < HIGH_VELOCITY_THRESHOLD) {
+            // Minor collision: mild chip damage (2 - 7 HP)
+            baseDmg = (relVel - MINOR_VELOCITY_THRESHOLD) * 0.7 + 2;
+        } else {
+            // Significant collision: substantial impact damage
+            baseDmg = 8 + (relVel - HIGH_VELOCITY_THRESHOLD) * 1.8;
+        }
 
         if (entA && entB) {
             const hasPlayer = entA.type === 'player' || entB.type === 'player';
             const hasBox = entA.type === 'box' || entB.type === 'box';
             if (hasPlayer && hasBox) {
-                if (entA.type === 'box') entA.takeDamage(1, bodyB);
-                if (entB.type === 'box') entB.takeDamage(1, bodyA);
+                if (relVel > 9) {
+                    if (entA.type === 'box') entA.takeDamage(1, bodyB);
+                    if (entB.type === 'box') entB.takeDamage(1, bodyA);
+                }
                 return;
             }
 
             if (bodyA.isThrown || bodyB.isThrown) {
                 const weightA = entA.weight || 1.0;
                 const weightB = entB.weight || 1.0;
-                const baseDmg = (relVel - HIGH_VELOCITY_THRESHOLD) * 2.2;
                 
                 entA.takeDamage(baseDmg * Math.sqrt(weightB), bodyB);
                 entB.takeDamage(baseDmg * Math.sqrt(weightA), bodyA);
                 
-                applyKnockback(entA.body, entB.body, 0.05 * weightB);
-                applyKnockback(entB.body, entA.body, 0.05 * weightA);
+                applyKnockback(entA.body, entB.body, 0.04 * weightB);
+                applyKnockback(entB.body, entA.body, 0.04 * weightA);
             }
         } else {
-            const damage = (relVel - HIGH_VELOCITY_THRESHOLD) * 2.5;
+            // Collision with static architecture or walls
             if (entA) {
-                if (entA.type === 'box') entA.takeDamage(1, bodyB);
-                else if (bodyA.isThrown) entA.takeDamage(damage, bodyB);
+                if (entA.type === 'box') {
+                    if (relVel > HIGH_VELOCITY_THRESHOLD) entA.takeDamage(1, bodyB);
+                } else if (entA.type === 'bone' && (bodyA.isThrown || entA.isBoomerang) && relVel > 16) {
+                    entA.breakBone();
+                } else if (bodyA.isThrown) {
+                    entA.takeDamage(baseDmg, bodyB);
+                }
             }
             if (entB) {
-                if (entB.type === 'box') entB.takeDamage(1, bodyA);
-                else if (bodyB.isThrown) entB.takeDamage(damage, bodyA);
+                if (entB.type === 'box') {
+                    if (relVel > HIGH_VELOCITY_THRESHOLD) entB.takeDamage(1, bodyA);
+                } else if (entB.type === 'bone' && (bodyB.isThrown || entB.isBoomerang) && relVel > 16) {
+                    entB.breakBone();
+                } else if (bodyB.isThrown) {
+                    entB.takeDamage(baseDmg, bodyA);
+                }
             }
         }
     }
@@ -3012,6 +3620,11 @@
                 alpha = Math.max(0, (1.0 - progress) / 0.3);
             }
 
+            // Once the banner is fully faded out, spawn the enemies
+            if (waveBannerTimer === 0 && isWavePendingSpawn) {
+                spawnWave();
+            }
+
             const scale = 1.0 + (1.0 - progress) * 0.15;
             const currentCfg = WAVE_CONFIGS[wave] || { title: "ENDLESS HORDE" };
 
@@ -3053,48 +3666,51 @@
         if (gameStarted) {
             Engine.update(engine, 1000 / 60);
 
-            let enemyCount = 0;
+            // Halt mob processing and wave progression once player dies
+            if (!player || !player.isDying) {
+                let enemyCount = 0;
 
-            for (let i = entities.length - 1; i >= 0; i--) {
-                const e = entities[i];
-                if (e.markedForDeletion) {
-                    Composite.remove(engine.world, e.body);
-                    entities.splice(i, 1);
-                    continue;
-                }
-
-                if (!e.isDying) {
-                    e.update();
-
-                    const hasGrace = (e.spawnGraceTimer && e.spawnGraceTimer > 0) || e.isEntering;
-                    if (e.body && (!hasGrace && e.body.position.y > 1050) || isNaN(e.body.position.x)) {
-                        e.die();
+                for (let i = entities.length - 1; i >= 0; i--) {
+                    const e = entities[i];
+                    if (e.markedForDeletion) {
+                        Composite.remove(engine.world, e.body);
+                        entities.splice(i, 1);
                         continue;
                     }
 
-                    if ((e.type === 'slime' || e.type === 'zombie' || e.type === 'golem' || e.type === 'maw' || e.type === 'spike_boss') && e.hp > 0) {
-                        enemyCount++;
+                    if (!e.isDying) {
+                        e.update();
+
+                        const hasGrace = (e.spawnGraceTimer && e.spawnGraceTimer > 0) || e.isEntering;
+                        if (e.body && (!hasGrace && e.body.position.y > 1050) || isNaN(e.body.position.x)) {
+                            e.die();
+                            continue;
+                        }
+
+                        if ((e.type === 'slime' || e.type === 'zombie' || e.type === 'golem' || e.type === 'maw' || e.type === 'spike_boss' || e.type === 'skeleton') && e.hp > 0) {
+                            enemyCount++;
+                        }
                     }
                 }
-            }
 
-            livingEnemiesCount = enemyCount;
+                livingEnemiesCount = enemyCount;
 
-            if (livingEnemiesCount === 0) {
-                waveTimer++;
-                if (waveTimer === 1) {
-                    // Spawn a healing heart after every 3rd level (3, 6, 9, 12, 15, etc.)
-                    if (wave % 3 === 0) {
-                        const heartX = 720 + (Math.random() - 0.5) * 160;
-                        new HealingHeart(heartX, 360);
+                if (livingEnemiesCount === 0 && !isWavePendingSpawn) {
+                    waveTimer++;
+                    if (waveTimer === 1) {
+                        // Spawn a healing heart after every 3rd level (3, 6, 9, 12, 15, etc.)
+                        if (wave % 3 === 0) {
+                            const heartX = 720 + (Math.random() - 0.5) * 160;
+                            new HealingHeart(heartX, 360);
+                        }
                     }
+                    if (waveTimer > 90) {
+                        wave++;
+                        prepareWave();
+                    }
+                } else if (livingEnemiesCount > 0) {
+                    waveTimer = 0;
                 }
-                if (waveTimer > 90) {
-                    wave++;
-                    spawnWave();
-                }
-            } else {
-                waveTimer = 0;
             }
         }
 
@@ -3103,6 +3719,14 @@
             p.update();
             if (p.life <= 0) {
                 particles.splice(i, 1);
+            }
+        }
+
+        for (let i = collapsingSkeletons.length - 1; i >= 0; i--) {
+            const cs = collapsingSkeletons[i];
+            cs.update();
+            if (cs.life <= 0) {
+                collapsingSkeletons.splice(i, 1);
             }
         }
 
@@ -3132,6 +3756,10 @@
         if (playerRef) {
             playerRef.draw(ctx);
         }
+
+        for (let i = 0; i < collapsingSkeletons.length; i++) {
+            collapsingSkeletons[i].draw(ctx);
+        }
         
         for (let i = 0; i < particles.length; i++) {
             particles[i].draw(ctx);
@@ -3144,7 +3772,7 @@
             
             if (playerDeathFade >= 0.65) {
                 document.getElementById('game-over-box').style.display = 'block';
-                document.getElementById('wave-reached').innerText = `You reached Wave ${wave}`;
+                document.getElementById('wave-reached').innerText = `You reached Wave ${finalWaveReached}`;
             }
         }
 
