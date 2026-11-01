@@ -489,6 +489,24 @@
             osc.stop(now + 0.14);
         },
 
+        playLevelUp() {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const chords = [392.00, 523.25, 659.25, 783.99, 1046.50];
+            chords.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                gain.gain.setValueAtTime(0.22, now + idx * 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + idx * 0.06);
+                osc.stop(now + idx * 0.06 + 0.35);
+            });
+        },
+
         playWaveStart() {
             if (!this.ctx) return;
             const now = this.ctx.currentTime;
@@ -581,8 +599,52 @@
     let entities = [];
     let particles = [];
     let collapsingSkeletons = [];
+    let breakablePlatforms = [];
     let shakeAmount = 0;
     let livingEnemiesCount = 0;
+
+    // Progression & XP Level Stats
+    // Kills needed per level transition:
+    // Lv 1->2: 5 kills | Lv 2->3: 30 kills | Lv 3->4: 80 kills | Lv 4->5: 100 kills
+    const LEVEL_REQUIREMENTS = { 1: 5, 2: 30, 3: 80, 4: 100 };
+    const LEVEL_CONFIGS = {
+        1: { psychicDrag: 0.70, pullForce: 0.10, maxHeldSpeed: 14.0, throwBoost: 0.85, maxThrowSpeed: 17.0, label: "Novice" },
+        2: { psychicDrag: 0.79, pullForce: 0.16, maxHeldSpeed: 18.0, throwBoost: 1.05, maxThrowSpeed: 22.0, label: "Adept" },
+        3: { psychicDrag: 0.88, pullForce: 0.22, maxHeldSpeed: 22.0, throwBoost: 1.25, maxThrowSpeed: 27.0, label: "Master" },
+        4: { psychicDrag: 0.94, pullForce: 0.29, maxHeldSpeed: 27.0, throwBoost: 1.45, maxThrowSpeed: 32.0, label: "Grandmaster" },
+        5: { psychicDrag: 0.965, pullForce: 0.33, maxHeldSpeed: 30.0, throwBoost: 1.55, maxThrowSpeed: 35.0, label: "Transcendent" }
+    };
+
+    let playerLevel = 1;
+    let currentLevelKills = 0;
+    let totalKills = 0;
+    let levelUpPopupTimer = 0;
+
+    function registerKill(x, y) {
+        totalKills++;
+        if (playerLevel < 5) {
+            currentLevelKills++;
+            const req = LEVEL_REQUIREMENTS[playerLevel];
+            if (currentLevelKills >= req) {
+                currentLevelKills = 0;
+                playerLevel = Math.min(5, playerLevel + 1);
+                levelUpPopupTimer = 110;
+                SoundFX.playLevelUp();
+                shakeAmount = Math.max(shakeAmount, 16);
+
+                // Celebratory burst around Steve
+                if (player && player.body) {
+                    const px = player.body.position.x;
+                    const py = player.body.position.y;
+                    for (let i = 0; i < 40; i++) {
+                        particles.push(new Particle(px, py, '#c084fc', 18, Math.random() * 5 + 3, 40));
+                        particles.push(new Particle(px, py, '#38bdf8', 16, Math.random() * 4 + 2, 45));
+                        particles.push(new Particle(px, py, '#fef08a', 14, Math.random() * 3 + 2, 50));
+                    }
+                }
+            }
+        }
+    }
 
     // Strict Mouse State
     const mouse = { x: 0, y: 0, isDown: false };
@@ -632,7 +694,7 @@
     // --- HELPER CLASSES ---
 
     class Particle {
-        constructor(x, y, color, speed, size, life) {
+        constructor(x, y, color, speed, size, life, shape = 'circle') {
             this.x = x;
             this.y = y;
             this.vx = (Math.random() - 0.5) * speed;
@@ -641,25 +703,63 @@
             this.size = size;
             this.life = life;
             this.maxLife = life;
+            this.shape = shape; // 'circle' or 'shard'
+            this.angle = Math.random() * Math.PI * 2;
+            this.vAngle = (Math.random() - 0.5) * 0.35;
+
+            // Generate irregular, jagged polygonal vertices for splinter shards
+            if (this.shape === 'shard') {
+                const pointCount = 4 + Math.floor(Math.random() * 3); // 4 to 6 random points
+                this.vertices = [];
+                for (let i = 0; i < pointCount; i++) {
+                    const baseAngle = (i / pointCount) * Math.PI * 2;
+                    const angleJitter = (Math.random() - 0.5) * (Math.PI / pointCount);
+                    const ptAngle = baseAngle + angleJitter;
+                    const radRatio = 0.45 + Math.random() * 0.75; // Jagged irregular radius
+                    this.vertices.push({
+                        x: Math.cos(ptAngle) * this.size * radRatio,
+                        y: Math.sin(ptAngle) * this.size * radRatio
+                    });
+                }
+            }
         }
         update() {
             this.x += this.vx;
             this.y += this.vy;
+            if (this.shape === 'shard') {
+                this.vy += 0.38; // Shards have realistic wood splinter gravity
+                this.angle += this.vAngle;
+            }
             this.life--;
         }
         draw(ctx) {
+            ctx.save();
             ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
             ctx.fillStyle = this.color;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
+
+            if (this.shape === 'shard' && this.vertices) {
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.beginPath();
+                ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+                for (let i = 1; i < this.vertices.length; i++) {
+                    ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+                }
+                ctx.closePath();
+                ctx.fill(); // Pure solid fill without any outlines
+            } else {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
         }
     }
 
-    function createExplosion(x, y, color, count) {
+    function createExplosion(x, y, color, count, shape = 'circle') {
         for (let i = 0; i < count; i++) {
-            particles.push(new Particle(x, y, color, 16, Math.random() * 5 + 2, 25 + Math.random() * 25));
+            particles.push(new Particle(x, y, color, 16, Math.random() * 5 + 2, 25 + Math.random() * 25, shape));
         }
     }
 
@@ -722,8 +822,33 @@
             
             shakeAmount = 16;
             
+            // Register kill progress for monsters
+            if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem' || this.type === 'maw' || this.type === 'skeleton' || this.type === 'spike_boss') {
+                registerKill(this.body.position.x, this.body.position.y);
+            }
+
             // Skeletons handle death via custom collapsing bone animation rather than particle bursts
             if (this.type === 'skeleton') {
+                return;
+            }
+
+            if (this.type === 'box') {
+                // Boxes shatter into irregular jagged wooden splinter shards without outlines
+                const shardCount = 26;
+                const woodColors = ['#D2B48C', '#8B4513', '#A0522D', '#CD853F', '#DEB887'];
+                for (let i = 0; i < shardCount; i++) {
+                    const chosenColor = woodColors[Math.floor(Math.random() * woodColors.length)];
+                    const shardSize = Math.random() * 10 + 6;
+                    particles.push(new Particle(
+                        this.body.position.x, 
+                        this.body.position.y, 
+                        chosenColor, 
+                        20, 
+                        shardSize, 
+                        30 + Math.random() * 30, 
+                        'shard'
+                    ));
+                }
                 return;
             }
 
@@ -733,7 +858,6 @@
             else if (this.type === 'golem') expColor = '#708090';
             else if (this.type === 'maw') expColor = '#6b21a8';
             else if (this.type === 'bone') expColor = '#f1f5f9';
-            else if (this.type === 'box') expColor = '#8B4513';
             else if (this.type === 'player') expColor = '#ff2222';
             else if (this.type === 'bomb') expColor = '#FF4500';
             
@@ -794,7 +918,16 @@
             if (this.grabbedEntity && !this.grabbedEntity.markedForDeletion) {
                 const b = this.grabbedEntity.body;
                 if (impartBoost) {
-                    Body.setVelocity(b, { x: b.velocity.x * 1.5, y: b.velocity.y * 1.5 });
+                    const cfg = LEVEL_CONFIGS[playerLevel] || LEVEL_CONFIGS[1];
+                    const maxThrowSpeed = cfg.maxThrowSpeed;
+                    let vx = b.velocity.x * cfg.throwBoost;
+                    let vy = b.velocity.y * cfg.throwBoost;
+                    const spd = Math.hypot(vx, vy);
+                    if (spd > maxThrowSpeed) {
+                        vx = (vx / spd) * maxThrowSpeed;
+                        vy = (vy / spd) * maxThrowSpeed;
+                    }
+                    Body.setVelocity(b, { x: vx, y: vy });
                     SoundFX.playThrow();
                 }
             }
@@ -842,6 +975,11 @@
                 SoundFX.playJump();
             }
 
+            // Falling off edges check: if Steve is falling downwards or airborne, disallow jumps
+            if (vy > 1.0) {
+                this.canJump = false;
+            }
+
             // Accelerated natural downward fall gravity
             if (!this.canJump && vy > 0) {
                 vy += 0.65;
@@ -858,6 +996,17 @@
             }
 
             Body.setVelocity(this.body, { x: vx, y: vy });
+
+            // Ground sensor ray check to prevent mid-air jumps when walking off ledges
+            if (this.canJump) {
+                const footY = this.body.position.y + 60;
+                const footX = this.body.position.x;
+                const hits = Query.point(engine.world.bodies, { x: footX, y: footY + 4 });
+                const isSupported = hits.some(b => b.isStatic && b.isGround);
+                if (!isSupported) {
+                    this.canJump = false;
+                }
+            }
 
             // Keep Steve strictly inside the visible screen boundaries
             const minX = 25;
@@ -880,7 +1029,6 @@
             if (currentY > 840) {
                 currentY = 840;
                 if (this.body.velocity.y > 0) Body.setVelocity(this.body, { x: this.body.velocity.x, y: 0 });
-                this.canJump = true;
                 clamped = true;
             }
 
@@ -975,10 +1123,25 @@
                         }
 
                         const force = Vector.sub(target, b.position);
-                        const weightFactor = Math.max(0.25, 1.4 / Math.sqrt(this.grabbedEntity.weight || 1));
+                        const weightFactor = Math.max(0.25, 1.25 / Math.sqrt(this.grabbedEntity.weight || 1));
+                        
+                        // Dynamic psychic physics scaled strictly by playerLevel
+                        const cfg = LEVEL_CONFIGS[playerLevel] || LEVEL_CONFIGS[1];
+                        const psychicDrag = cfg.psychicDrag;
+                        const maxHeldSpeed = cfg.maxHeldSpeed;
+
+                        let targetVx = (b.velocity.x * psychicDrag) + (force.x * cfg.pullForce * weightFactor);
+                        let targetVy = (b.velocity.y * psychicDrag) + (force.y * cfg.pullForce * weightFactor);
+
+                        const currentSpeed = Math.hypot(targetVx, targetVy);
+                        if (currentSpeed > maxHeldSpeed) {
+                            targetVx = (targetVx / currentSpeed) * maxHeldSpeed;
+                            targetVy = (targetVy / currentSpeed) * maxHeldSpeed;
+                        }
+
                         Body.setVelocity(b, {
-                            x: Math.max(-25, Math.min(25, force.x * 0.28 * weightFactor)),
-                            y: Math.max(-25, Math.min(25, force.y * 0.28 * weightFactor))
+                            x: targetVx,
+                            y: targetVy
                         });
                         b.isThrown = true;
                     }
@@ -1173,13 +1336,78 @@
         }
 
         drawHpBarUI() {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.fillRect(20, 20, 304, 34);
-            ctx.fillStyle = '#00ff00';
-            ctx.fillRect(22, 22, 300 * (this.hp / this.maxHp), 30);
-            ctx.fillStyle = 'white';
-            ctx.font = '24px Inter';
-            ctx.fillText(`HP: ${Math.ceil(this.hp)}`, 30, 46);
+            const barW = 304;
+            const barH = 38;
+            const hpBarX = 20;
+            const hpBarY = 20;
+            const xpBarX = 20;
+            const xpBarY = hpBarY + barH + 10; // 68px
+
+            // --- HP BAR ---
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.fillRect(hpBarX, hpBarY, barW, barH);
+
+            const hpRatio = Math.max(0, Math.min(1.0, this.hp / this.maxHp));
+            const hpGrad = ctx.createLinearGradient(hpBarX, hpBarY, hpBarX + barW, hpBarY);
+            hpGrad.addColorStop(0, '#22c55e');
+            hpGrad.addColorStop(1, '#4ade80');
+            ctx.fillStyle = hpGrad;
+            ctx.fillRect(hpBarX + 2, hpBarY + 2, (barW - 4) * hpRatio, barH - 4);
+
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(hpBarX, hpBarY, barW, barH);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 18px Inter';
+            ctx.textAlign = 'left';
+            ctx.fillText(`HP: ${Math.ceil(this.hp)} / ${this.maxHp}`, hpBarX + 14, hpBarY + 25);
+
+            // --- LEVEL / XP BAR (EQUAL HEIGHT: 38px) ---
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.fillRect(xpBarX, xpBarY, barW, barH);
+
+            const isMaxLevel = playerLevel >= 5;
+            const neededKills = isMaxLevel ? 1 : LEVEL_REQUIREMENTS[playerLevel];
+            const currentKills = isMaxLevel ? 1 : currentLevelKills;
+            const xpRatio = Math.min(1.0, Math.max(0, currentKills / neededKills));
+
+            // Gradient XP fill
+            const xpGrad = ctx.createLinearGradient(xpBarX, xpBarY, xpBarX + barW, xpBarY);
+            xpGrad.addColorStop(0, '#9333ea');
+            xpGrad.addColorStop(1, '#06b6d4');
+            ctx.fillStyle = xpGrad;
+            ctx.fillRect(xpBarX + 2, xpBarY + 2, (barW - 4) * xpRatio, barH - 4);
+
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(xpBarX, xpBarY, barW, barH);
+
+            // Clean Level Indicator without numerical kill count
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 18px Inter';
+            ctx.textAlign = 'left';
+            if (isMaxLevel) {
+                ctx.fillText(`LV 5 [MAX]`, xpBarX + 14, xpBarY + 25);
+            } else {
+                ctx.fillText(`LV ${playerLevel}`, xpBarX + 14, xpBarY + 25);
+            }
+
+            // Level Up floating toast popup
+            if (levelUpPopupTimer > 0) {
+                levelUpPopupTimer--;
+                ctx.save();
+                const popupAlpha = Math.min(1.0, levelUpPopupTimer / 30);
+                ctx.globalAlpha = popupAlpha;
+                ctx.textAlign = 'center';
+                ctx.font = '900 28px Inter';
+                ctx.fillStyle = '#facc15';
+                ctx.shadowColor = '#a855f7';
+                ctx.shadowBlur = 18;
+                const popY = xpBarY + barH + 34 - (110 - levelUpPopupTimer) * 0.25;
+                ctx.fillText(`★ LEVEL UP! LV ${playerLevel} ★`, 172, popY);
+                ctx.restore();
+            }
         }
     }
 
@@ -1889,6 +2117,7 @@
             });
             super(body, 1, 'bone', 0.9);
             this.owner = owner;
+            this.ownerGraceTicks = 20; // Grace ticks preventing instant self-damage upon release
             this.isBoomerang = false;
             this.spinAngle = 0;
             this.flightTimer = 0;
@@ -1898,10 +2127,16 @@
             this.durability = 3; // Allows multiple hits/throws before breaking
             this.lifespan = 600; // Despawn after 10 seconds (60fps * 10)
             this.maxLifespan = 600;
+            this.isFadingOnGround = false;
+            this.fadeAlpha = 1.0;
         }
 
         update() {
             if (this.isDying || this.markedForDeletion) return;
+
+            if (this.ownerGraceTicks > 0) {
+                this.ownerGraceTicks--;
+            }
 
             const pos = this.body.position;
             if (pos.y > 1050 || pos.x < -200 || pos.x > 1640) {
@@ -1909,9 +2144,20 @@
                 return;
             }
 
-            // Despawn countdown after 10 seconds (pause countdown while actively being held by psychic energy)
             const isHeld = player && player.grabbedEntity === this;
-            if (!isHeld) {
+            if (isHeld) {
+                // If Steve grabs the bone, clear the grace period so it can be flung right back
+                this.ownerGraceTicks = 0;
+                // Steve maintains control: cancel ground fade if picked back up
+                this.isFadingOnGround = false;
+                this.fadeAlpha = 1.0;
+            } else if (this.isFadingOnGround) {
+                this.fadeAlpha -= 0.04;
+                if (this.fadeAlpha <= 0) {
+                    this.die();
+                    return;
+                }
+            } else {
                 this.lifespan--;
                 if (this.lifespan <= 0) {
                     this.die();
@@ -1951,8 +2197,10 @@
             ctx.translate(pos.x, pos.y);
             ctx.rotate(this.body.angle);
 
-            // Subtle blink warning during the last 2 seconds before despawn
-            if (this.lifespan < 120 && Math.floor(this.lifespan / 10) % 2 === 0) {
+            // Fade alpha when touching ground or subtle blink before despawn
+            if (this.isFadingOnGround) {
+                ctx.globalAlpha = Math.max(0, this.fadeAlpha);
+            } else if (this.lifespan < 120 && Math.floor(this.lifespan / 10) % 2 === 0) {
                 ctx.globalAlpha = 0.35;
             }
 
@@ -2108,6 +2356,9 @@
             this.hasBone = true;
             this.throwCooldown = 45;
             this.activeBone = null;
+            this.strafeTimer = Math.floor(Math.random() * 60);
+            this.strafeDir = Math.random() > 0.5 ? 1 : -1;
+            this.hopCooldown = 0;
         }
 
         update() {
@@ -2154,20 +2405,42 @@
                 }
             }
 
-            // Skeletons are deliberate, methodical long-range snipers
+            if (this.hopCooldown > 0) {
+                this.hopCooldown--;
+            }
+
+            // Skeletons now actively patrol, reposition, and backpedal
             let vx = 0;
-            const preferredMinRange = 300;
-            const preferredMaxRange = 540;
+            const preferredMinRange = 280;
+            const preferredMaxRange = 560;
+
+            this.strafeTimer++;
+            if (this.strafeTimer > 90) {
+                this.strafeTimer = 0;
+                this.strafeDir = Math.random() > 0.4 ? this.facing : -this.facing;
+            }
 
             if (distToSteve < preferredMinRange) {
-                // Backpedal slowly away from Steve
-                vx = -this.facing * 1.0;
+                // Backpedal swiftly away from Steve
+                vx = -this.facing * 1.85;
+
+                // Evasive hop if Steve gets uncomfortably close
+                if (distToSteve < 170 && this.hopCooldown <= 0 && Math.random() < 0.08) {
+                    Body.setVelocity(this.body, { x: -this.facing * 4.2, y: -10 });
+                    this.hopCooldown = 100;
+                    return;
+                }
             } else if (distToSteve > preferredMaxRange) {
-                // Walk slowly into long range
-                vx = this.facing * 1.1;
+                // Close the distance with higher speed
+                vx = this.facing * 1.95;
             } else {
-                vx = 0;
+                // Tactical strafing within comfort zone
+                vx = this.strafeDir * 1.25;
             }
+
+            // Boundary constraints to keep them inside the arena
+            if (pos.x < 100) vx = Math.max(vx, 1.4);
+            if (pos.x > 1340) vx = Math.min(vx, -1.4);
 
             // Throw bone directly at Steve when ready
             if (this.hasBone && this.throwCooldown <= 0 && !this.isEntering) {
@@ -2176,7 +2449,7 @@
 
             Body.setVelocity(this.body, { x: vx, y: this.body.velocity.y });
             if (Math.abs(vx) > 0.1) {
-                this.animTimer += 0.06;
+                this.animTimer += 0.12;
             } else {
                 this.animTimer = 0;
             }
@@ -2219,15 +2492,7 @@
             if (this.isDying) return;
             const pos = { x: this.body.position.x, y: this.body.position.y };
 
-            // Always drop a loose bone onto the floor for Steve
-            const droppedBone = new Bone(pos.x, pos.y - 10, null);
-            droppedBone.isBoomerang = false;
-            Body.setVelocity(droppedBone.body, {
-                x: (Math.random() - 0.5) * 4,
-                y: -4
-            });
-
-            // Trigger skeleton disassembly collapse animation
+            // Trigger skeleton disassembly collapse animation without dropping loose ground bones
             collapsingSkeletons.push(new SkeletonCollapse(pos.x, pos.y, this.facing));
             SoundFX.playBoneClack();
 
@@ -2359,6 +2624,10 @@
             this.rotationSpeed = 0.065; // Swings faster and more aggressively
             this.chainLength = 220;     // Extended reach
             this.hitCooldown = 0;
+            
+            // Active attack states
+            this.state = 'hover';
+            this.stateTimer = 0;
             this.hoverTimer = 0;
 
             // Swinging heavy satellite flail (scaled up)
@@ -2411,17 +2680,80 @@
             const pos = this.body.position;
             if (this.hitCooldown > 0) this.hitCooldown--;
 
-            // Hover and track player smoothly across upper arena
-            this.hoverTimer += 0.035;
-            let targetX = 720;
-            let targetY = 310 + Math.sin(this.hoverTimer) * 75;
-            if (player && !player.isDying) {
-                targetX = Math.max(260, Math.min(1180, player.body.position.x));
+            // Active attack state machine
+            this.stateTimer++;
+            if (this.state === 'hover') {
+                // Hover and track player smoothly across upper arena
+                this.hoverTimer += 0.035;
+                let targetX = 720;
+                let targetY = 310 + Math.sin(this.hoverTimer) * 75;
+                if (player && !player.isDying) {
+                    targetX = Math.max(260, Math.min(1180, player.body.position.x));
+                }
+
+                const hoverDx = (targetX - pos.x) * 0.028;
+                const hoverDy = (targetY - pos.y) * 0.028;
+                Body.setVelocity(this.body, { x: hoverDx, y: hoverDy });
+                
+                if (this.stateTimer > 210) { // Initiate attack every ~3.5 seconds
+                    this.state = 'windup';
+                    this.stateTimer = 0;
+                }
+            } else if (this.state === 'windup') {
+                // Stop moving and shake before charging
+                Body.setVelocity(this.body, { x: 0, y: 0 });
+                if (this.stateTimer > 50) {
+                    this.state = 'charge';
+                    this.stateTimer = 0;
+                    SoundFX.playThrow(); // Audio cue for attack
+                    if (player && !player.isDying) {
+                        const dx = player.body.position.x - pos.x;
+                        const dy = player.body.position.y - pos.y;
+                        const dist = Math.hypot(dx, dy) || 1;
+                        const chargeSpeed = 24.0;
+                        Body.setVelocity(this.body, { x: (dx / dist) * chargeSpeed, y: (dy / dist) * chargeSpeed });
+                    }
+                }
+            } else if (this.state === 'charge') {
+                // High speed dash
+                const speed = Math.hypot(this.body.velocity.x, this.body.velocity.y);
+                if (this.stateTimer > 65 || speed < 3) {
+                    this.state = 'hover';
+                    this.stateTimer = 0;
+                }
+                if (this.stateTimer % 5 === 0) {
+                    createExplosion(pos.x, pos.y + this.radius, '#64748b', 2);
+                }
             }
 
-            const hoverDx = (targetX - pos.x) * 0.028;
-            const hoverDy = (targetY - pos.y) * 0.028;
-            Body.setVelocity(this.body, { x: hoverDx, y: hoverDy });
+            // Platform Smashing Logic
+            for (let i = 0; i < breakablePlatforms.length; i++) {
+                let plat = breakablePlatforms[i];
+                if (!plat.isBroken) {
+                    // Check if boss core or flail intersects the platform bounds
+                    if (Matter.Bounds.overlaps(this.body.bounds, plat.bounds) || 
+                       (this.flailEntity && !this.flailEntity.isDying && Matter.Bounds.overlaps(this.flailEntity.body.bounds, plat.bounds))) {
+                        
+                        plat.isBroken = true;
+                        Composite.remove(engine.world, plat); // Remove physical barrier
+                        
+                        SoundFX.playHit();
+                        shakeAmount = Math.max(shakeAmount, 15);
+                        
+                        // Burst into splinter shards
+                        const shardCount = 25;
+                        const woodColors = ['#D2B48C', '#8B4513', '#A0522D', '#CD853F', '#DEB887'];
+                        for (let j = 0; j < shardCount; j++) {
+                            const chosenColor = woodColors[Math.floor(Math.random() * woodColors.length)];
+                            particles.push(new Particle(
+                                plat.position.x + (Math.random() - 0.5) * plat.origW, 
+                                plat.position.y + (Math.random() - 0.5) * plat.origH, 
+                                chosenColor, 18, Math.random() * 8 + 4, 40 + Math.random() * 20, 'shard'
+                            ));
+                        }
+                    }
+                }
+            }
 
             // Swing satellite flail in faster continuous orbit around the boss
             this.angle += this.rotationSpeed;
@@ -2534,6 +2866,16 @@
             // Draw Central Spike Core (enlarged)
             ctx.save();
             ctx.translate(pos.x, pos.y);
+
+            // Windup attack glow and shake
+            if (this.state === 'windup') {
+                ctx.fillStyle = `rgba(239, 68, 68, ${Math.sin(this.stateTimer * 0.4) * 0.4 + 0.1})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius + 35, 0, Math.PI * 2);
+                ctx.fill();
+                // Visual shake
+                ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            }
 
             // Spikes around central body
             const spikeCount = 14;
@@ -2818,6 +3160,26 @@
     // --- GAME INITIALIZATION & MANAGEMENT ---
 
     let player;
+    
+    function restoreBrokenPlatforms() {
+        for (let i = 0; i < breakablePlatforms.length; i++) {
+            let plat = breakablePlatforms[i];
+            if (plat.isBroken) {
+                plat.isBroken = false;
+                plat.isRestoring = true;
+                plat.restoreAlpha = 0;
+                Composite.add(engine.world, plat);
+                // Magical restoration particle poofs
+                for (let p = 0; p < 30; p++) {
+                    particles.push(new Particle(
+                        plat.position.x + (Math.random() - 0.5) * plat.origW, 
+                        plat.position.y + (Math.random() - 0.5) * plat.origH, 
+                        '#c084fc', 8, Math.random() * 3 + 3, 40
+                    ));
+                }
+            }
+        }
+    }
 
     function initGame() {
         Composite.clear(engine.world);
@@ -2828,6 +3190,10 @@
         wave = 1;
         playerDeathFade = 0;
         mouse.isDown = false;
+        playerLevel = 1;
+        currentLevelKills = 0;
+        totalKills = 0;
+        levelUpPopupTimer = 0;
         document.getElementById('game-over-box').style.display = 'none';
 
         const ground = Bodies.rectangle(720, 930, 1440, 60, { isStatic: true, render: { fillStyle: '#32CD32' } });
@@ -2841,9 +3207,12 @@
         ground.isGround = true;
         groundLeftExt.isGround = true;
         groundRightExt.isGround = true;
-        plat1.isGround = true;
-        plat2.isGround = true;
-        plat3.isGround = true;
+        
+        // Track breakable platforms for boss smashing
+        plat1.isGround = true; plat1.origW = 660; plat1.origH = 30; plat1.isBroken = false; plat1.restoreAlpha = 1;
+        plat2.isGround = true; plat2.origW = 400; plat2.origH = 30; plat2.isBroken = false; plat2.restoreAlpha = 1;
+        plat3.isGround = true; plat3.origW = 660; plat3.origH = 30; plat3.isBroken = false; plat3.restoreAlpha = 1;
+        breakablePlatforms = [plat1, plat2, plat3];
 
         const wallLeft = Bodies.rectangle(-450, 200, 100, 2400, { isStatic: true });
         const wallRight = Bodies.rectangle(1890, 200, 100, 2400, { isStatic: true });
@@ -2863,7 +3232,7 @@
     const WAVE_CONFIGS = {
         1: { title: "THE AWAKENING", zombies: 3, slimes: 0, maws: 0, boxes: 1, bombs: 0 },
         2: { title: "GREEN OOZE", zombies: 3, slimes: 3, maws: 0, boxes: 2, bombs: 0 },
-        3: { title: "BONE BRIGADE", skeletons: 5, zombies: 0, slimes: 0, maws: 0, boxes: 2, bombs: 1 },
+        3: { title: "BONE BRIGADE", skeletons: 10, zombies: 0, slimes: 0, maws: 0, boxes: 2, bombs: 1 },
         4: { title: "SLIME INVASION", zombies: 0, slimes: 12, maws: 0, boxes: 1, bombs: 2 },
         5: { title: "WALKING DEAD", zombies: 12, slimes: 3, maws: 0, boxes: 3, bombs: 1 },
         6: { title: "CHOMPER INVASION", zombies: 8, slimes: 6, maws: 2, boxes: 2, bombs: 2 },
@@ -2875,7 +3244,7 @@
         12: { title: "CARNAGE VALLEY", skeletons: 5, golem: 5, zombies: 5, slimes: 0, maws: 10, boxes: 1, bombs: 2 },
         13: { title: "TWIN ROYALS", slimeBosses: 2, zombies: 0, slimes: 0, maws: 0, boxes: 2, bombs: 0 },
         14: { title: "ARMORED FRENZY", golem: 5, zombies: 0, slimes: 0, maws: 15, boxes: 1, bombs: 2 },
-        15: { title: "IRON JUGGERNAUT", spikeBoss: true, zombies: 0, slimes: 0, maws: 0, boxes: 0, bombs: 0 }
+        15: { title: "IRON JUGGERNAUT", spikeBoss: true, zombies: 0, slimes: 0, maws: 0, boxes: 10, bombs: 0 }
     };
 
     function prepareWave() {
@@ -3218,6 +3587,17 @@
         });
     });
 
+    Events.on(engine, 'collisionEnd', (event) => {
+        event.pairs.forEach((pair) => {
+            if (player && (pair.bodyA === player.body || pair.bodyB === player.body)) {
+                const other = pair.bodyA === player.body ? pair.bodyB : pair.bodyA;
+                if (other.isStatic && other.isGround) {
+                    player.canJump = false;
+                }
+            }
+        });
+    });
+
     function handleCollision(bodyA, bodyB, pair, isStart) {
         const entA = bodyA.entity;
         const entB = bodyB.entity;
@@ -3234,9 +3614,15 @@
 
         if (entA && (bodyB.isGround || bodyB.isStatic)) {
             entA.canBeGrabbed = true;
+            if (entA.type === 'bone' && !entA.isFadingOnGround) {
+                entA.isFadingOnGround = true;
+            }
         }
         if (entB && (bodyA.isGround || bodyA.isStatic)) {
             entB.canBeGrabbed = true;
+            if (entB.type === 'bone' && !entB.isFadingOnGround) {
+                entB.isFadingOnGround = true;
+            }
         }
 
         if (entA === player && checkGroundContact(bodyA, bodyB)) player.canJump = true;
@@ -3365,7 +3751,7 @@
                     entA.breakBone();
                 }
             }
-            if (entB.type === 'bone' && entA.type === 'player') {
+            if (entB.type === 'bone' && entA === player) {
                 const isFlying = Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 6 || bodyB.isThrown;
                 if (player.invulnerableTimer <= 0 && isFlying) {
                     player.takeDamage(10, entB.body);
@@ -3374,20 +3760,22 @@
                 }
             }
 
-            // Friendly fire guard: bones ignore all skeleton allies and owners
-            if (entA.type === 'bone' && entB.type === 'skeleton' && entA.owner) {
-                return;
+            // Bone collision with skeletons: if thrown by player or moving back at speed, deal damage to owners and skeletons
+            if (entA.type === 'bone' && entB.type === 'skeleton') {
+                const isFlying = Math.hypot(bodyA.velocity.x, bodyA.velocity.y) > 6 || bodyA.isThrown;
+                const isOwnerImmune = entA.owner === entB && entA.ownerGraceTicks > 0 && !bodyA.isThrown;
+                if (isFlying && !isOwnerImmune && (bodyA.isThrown || entA.owner !== entB || entA.ownerGraceTicks <= 0)) {
+                    entB.takeDamage(10, bodyA);
+                    entA.breakBone();
+                }
             }
-            if (entB.type === 'bone' && entA.type === 'skeleton' && entB.owner) {
-                return;
-            }
-
-            // Ensure bone never damages its owner on collision
-            if (entA.type === 'bone' && entB === entA.owner) {
-                return;
-            }
-            if (entB.type === 'bone' && entA === entB.owner) {
-                return;
+            if (entB.type === 'bone' && entA.type === 'skeleton') {
+                const isFlying = Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 6 || bodyB.isThrown;
+                const isOwnerImmune = entB.owner === entA && entB.ownerGraceTicks > 0 && !bodyB.isThrown;
+                if (isFlying && !isOwnerImmune && (bodyB.isThrown || entB.owner !== entA || entB.ownerGraceTicks <= 0)) {
+                    entA.takeDamage(10, bodyB);
+                    entB.breakBone();
+                }
             }
 
             // Bomb collision
@@ -3415,16 +3803,20 @@
 
         // Bone impact against enemies or Steve
         if (entA && entA.type === 'bone' && (bodyA.isThrown || Math.hypot(bodyA.velocity.x, bodyA.velocity.y) > 7)) {
-            if (entB && (entB === entA.owner || (entA.owner && entB.type === 'skeleton'))) return;
-            if (entB) {
+            if (entB && entB.type !== 'bone') {
+                if (entB.type === 'skeleton' && entA.owner === entB && entA.ownerGraceTicks > 0 && !bodyA.isThrown) {
+                    return;
+                }
                 entB.takeDamage(10, bodyA);
                 entA.breakBone();
                 return;
             }
         }
         if (entB && entB.type === 'bone' && (bodyB.isThrown || Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 7)) {
-            if (entA && (entA === entB.owner || (entB.owner && entA.type === 'skeleton'))) return;
-            if (entA) {
+            if (entA && entA.type !== 'bone') {
+                if (entA.type === 'skeleton' && entB.owner === entA && entB.ownerGraceTicks > 0 && !bodyB.isThrown) {
+                    return;
+                }
                 entA.takeDamage(10, bodyB);
                 entB.breakBone();
                 return;
@@ -3516,10 +3908,23 @@
         ctx.fillStyle = '#32CD32'; 
         ctx.fillRect(0, 900, 1440, 60); 
 
-        ctx.fillStyle = '#8B4513'; 
-        ctx.fillRect(-240, 635, 660, 30);
-        ctx.fillRect(520, 435, 400, 30);
-        ctx.fillRect(1020, 635, 660, 30);
+        for (let i = 0; i < breakablePlatforms.length; i++) {
+            let plat = breakablePlatforms[i];
+            if (!plat.isBroken) {
+                ctx.save();
+                if (plat.isRestoring) {
+                    plat.restoreAlpha += 0.02;
+                    if (plat.restoreAlpha >= 1) {
+                        plat.restoreAlpha = 1;
+                        plat.isRestoring = false;
+                    }
+                    ctx.globalAlpha = plat.restoreAlpha;
+                }
+                ctx.fillStyle = '#8B4513'; 
+                ctx.fillRect(plat.position.x - plat.origW / 2, plat.position.y - plat.origH / 2, plat.origW, plat.origH);
+                ctx.restore();
+            }
+        }
     }
 
     function drawOnScreenControls() {
@@ -3598,14 +4003,38 @@
     function drawUI() {
         drawOnScreenControls();
 
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 32px Inter';
-        ctx.textAlign = 'right';
-        ctx.fillText(`WAVE ${wave}`, 1400, 40);
-        
-        ctx.font = '24px Inter';
-        ctx.fillText(`Enemies: ${livingEnemiesCount}`, 1400, 75);
-        ctx.textAlign = 'left';
+        // Top-Right Wave Information Pill Box (larger & clearly defined)
+        ctx.save();
+        const infoBoxW = 240;
+        const infoBoxH = 88;
+        const infoBoxX = 1440 - infoBoxW - 20;
+        const infoBoxY = 20;
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.beginPath();
+        ctx.roundRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH, 16);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+
+        // Wave Title
+        ctx.font = '900 36px Inter';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
+        ctx.shadowBlur = 12;
+        ctx.fillText(`WAVE ${wave}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
+
+        // Living Enemies Count
+        ctx.shadowBlur = 0;
+        ctx.font = 'bold 22px Inter';
+        ctx.fillStyle = livingEnemiesCount > 0 ? '#f87171' : '#4ade80';
+        ctx.fillText(`Enemies: ${livingEnemiesCount}`, infoBoxX + infoBoxW / 2, infoBoxY + 72);
+
+        ctx.restore();
 
         if (waveBannerTimer > 0) {
             waveBannerTimer--;
@@ -3702,6 +4131,10 @@
                         if (wave % 3 === 0) {
                             const heartX = 720 + (Math.random() - 0.5) * 160;
                             new HealingHeart(heartX, 360);
+                        }
+                        // Smoothly restore any smashed platforms upon clearing the boss
+                        if (wave === 15) {
+                            restoreBrokenPlatforms();
                         }
                     }
                     if (waveTimer > 90) {
