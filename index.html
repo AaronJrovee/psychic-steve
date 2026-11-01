@@ -605,14 +605,13 @@
 
     // Progression & XP Level Stats
     // Kills needed per level transition:
-    // Lv 1->2: 5 kills | Lv 2->3: 30 kills | Lv 3->4: 80 kills | Lv 4->5: 100 kills
-    const LEVEL_REQUIREMENTS = { 1: 5, 2: 30, 3: 80, 4: 100 };
+    const LEVEL_REQUIREMENTS = { 1: 10, 2: 40, 3: 100, 4: 150 };
     const LEVEL_CONFIGS = {
         1: { psychicDrag: 0.70, pullForce: 0.10, maxHeldSpeed: 14.0, throwBoost: 0.85, maxThrowSpeed: 17.0, label: "Novice" },
-        2: { psychicDrag: 0.79, pullForce: 0.16, maxHeldSpeed: 18.0, throwBoost: 1.05, maxThrowSpeed: 22.0, label: "Adept" },
-        3: { psychicDrag: 0.88, pullForce: 0.22, maxHeldSpeed: 22.0, throwBoost: 1.25, maxThrowSpeed: 27.0, label: "Master" },
-        4: { psychicDrag: 0.94, pullForce: 0.29, maxHeldSpeed: 27.0, throwBoost: 1.45, maxThrowSpeed: 32.0, label: "Grandmaster" },
-        5: { psychicDrag: 0.965, pullForce: 0.33, maxHeldSpeed: 30.0, throwBoost: 1.55, maxThrowSpeed: 35.0, label: "Transcendent" }
+        2: { psychicDrag: 0.75, pullForce: 0.13, maxHeldSpeed: 16.0, throwBoost: 0.95, maxThrowSpeed: 19.0, label: "Adept" },
+        3: { psychicDrag: 0.80, pullForce: 0.16, maxHeldSpeed: 18.0, throwBoost: 1.05, maxThrowSpeed: 22.0, label: "Master" },
+        4: { psychicDrag: 0.85, pullForce: 0.20, maxHeldSpeed: 21.0, throwBoost: 1.15, maxThrowSpeed: 25.0, label: "Grandmaster" },
+        5: { psychicDrag: 0.90, pullForce: 0.25, maxHeldSpeed: 24.0, throwBoost: 1.25, maxThrowSpeed: 28.0, label: "Transcendent" }
     };
 
     let playerLevel = 1;
