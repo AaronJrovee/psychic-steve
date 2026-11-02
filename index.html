@@ -150,10 +150,31 @@
             <button class="play-btn" onclick="startGame()">PLAY</button>
         </div>
 
+        <!-- HUD Layer (Active Gameplay) -->
+        <div id="hud-layer" style="display: none; position: absolute; top: 15px; right: 15px; pointer-events: auto;">
+            <button id="pause-btn" class="bg-gray-800/80 border-2 border-purple-500 text-purple-300 rounded-full w-10 h-10 flex items-center justify-center text-lg hover:bg-purple-600 hover:text-white transition-all shadow-[0_0_10px_rgba(168,85,247,0.5)]" onclick="togglePause()">
+                ⏸
+            </button>
+        </div>
+
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="message-box" style="z-index: 60;">
+            <h1 class="text-5xl font-extrabold text-purple-400 mb-6 drop-shadow-md tracking-widest">PAUSED</h1>
+            <button class="play-btn !text-xl !px-8 !py-3 !mt-0" onclick="togglePause()">RESUME</button>
+        </div>
+
         <!-- Game Over Screen -->
         <div id="game-over-box" class="message-box">
             <h1 class="text-4xl font-extrabold text-red-500 mb-2 drop-shadow-md">YOU DIED</h1>
             <p id="wave-reached" class="text-xl mb-4 text-purple-200"></p>
+            
+            <!-- Difficulty Selector (Post-Death) -->
+            <div class="flex gap-4 mb-6 justify-center" id="go-difficulty-selector">
+                <button id="go-btn-diff-easy" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
+                <button id="go-btn-diff-normal" class="px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
+                <button id="go-btn-diff-hard" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
+            </div>
+
             <button class="restart-btn" onclick="resetGame()">Play Again</button>
         </div>
     </div>
@@ -219,7 +240,7 @@
             const chordPadProgression = [220.00, 174.61, 196.00, 220.00];
 
             this.bgmInterval = setInterval(() => {
-                if (!this.ctx || !this.isBgmPlaying) return;
+                if (!this.ctx || !this.isBgmPlaying || this.ctx.state === 'suspended') return;
                 const now = this.ctx.currentTime;
                 const step = this.bgmStep % 64;
                 const bar = Math.floor(step / 16);
@@ -597,22 +618,40 @@
 
     let isLooping = true;
     let gameStarted = false;
+    let isPaused = false;
     let currentDifficulty = 'normal';
+
+    function togglePause() {
+        if (!gameStarted || (player && player.isDying)) return;
+        isPaused = !isPaused;
+        if (isPaused) {
+            document.getElementById('pause-screen').style.display = 'block';
+            if (SoundFX.ctx) SoundFX.ctx.suspend();
+        } else {
+            document.getElementById('pause-screen').style.display = 'none';
+            if (SoundFX.ctx) SoundFX.ctx.resume();
+        }
+    }
 
     function setDifficulty(diff) {
         currentDifficulty = diff;
-        const btnEasy = document.getElementById('btn-diff-easy');
-        const btnNormal = document.getElementById('btn-diff-normal');
-        const btnHard = document.getElementById('btn-diff-hard');
+        const difficulties = ['easy', 'normal', 'hard'];
         
-        [btnEasy, btnNormal, btnHard].forEach(b => {
-            b.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all";
-        });
+        difficulties.forEach(d => {
+            const baseClass = "px-6 py-2 rounded-full font-bold text-white border-2 transition-all ";
+            let activeClass = "";
+            let inactiveClass = "border-gray-500 bg-gray-800 opacity-60 hover:opacity-100";
+            
+            if (d === 'easy') activeClass = "border-green-400 bg-green-600 transform scale-110 shadow-[0_0_15px_rgba(74,222,128,0.6)]";
+            if (d === 'normal') activeClass = "border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)]";
+            if (d === 'hard') activeClass = "border-red-400 bg-red-600 transform scale-110 shadow-[0_0_15px_rgba(248,113,113,0.6)]";
 
-        const targetBtn = document.getElementById(`btn-diff-${diff}`);
-        if (diff === 'easy') targetBtn.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-green-400 bg-green-600 transform scale-110 shadow-[0_0_15px_rgba(74,222,128,0.6)] transition-all";
-        if (diff === 'normal') targetBtn.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all";
-        if (diff === 'hard') targetBtn.className = "px-6 py-2 rounded-full font-bold text-white border-2 border-red-400 bg-red-600 transform scale-110 shadow-[0_0_15px_rgba(248,113,113,0.6)] transition-all";
+            const titleBtn = document.getElementById(`btn-diff-${d}`);
+            const goBtn = document.getElementById(`go-btn-diff-${d}`);
+            
+            if (titleBtn) titleBtn.className = baseClass + (diff === d ? activeClass : inactiveClass);
+            if (goBtn) goBtn.className = baseClass + (diff === d ? activeClass : inactiveClass);
+        });
     }
 
     let playerDeathFade = 0;
@@ -1194,6 +1233,8 @@
             this.markedForDeletion = true;
             finalWaveReached = wave;
             
+            document.getElementById('hud-layer').style.display = 'none';
+            
             shakeAmount = 30;
             SoundFX.stopMusic();
             SoundFX.playExplosion(1.4);
@@ -1427,8 +1468,7 @@
             if (isMaxLevel) {
                 ctx.fillText(`LV 5 [MAX]`, xpBarX + 14, xpBarY + 25);
             } else {
-                const diffLabel = currentDifficulty === 'easy' ? ' (MAX POWERS)' : '';
-                ctx.fillText(`LV ${playerLevel}${diffLabel}`, xpBarX + 14, xpBarY + 25);
+                ctx.fillText(`LV ${playerLevel}`, xpBarX + 14, xpBarY + 25);
             }
 
             // Level Up floating toast popup
@@ -2654,14 +2694,15 @@
                 frictionAir: 0.08,
                 density: 0.01
             });
-            super(body, 280, 'spike_boss', 11.0);
+            super(body, 600, 'spike_boss', 11.0);
             this.radius = 88;
-            this.canBeGrabbed = false;
+            this.canBeGrabbed = false; // Stage 1: NOT grabbable
             this.isEntering = false;
             this.angle = 0;
-            this.rotationSpeed = 0.065; // Swings faster and more aggressively
+            this.rotationSpeed = 0.035; // Slower, more deliberate swinging
             this.chainLength = 220;     // Extended reach
             this.hitCooldown = 0;
+            this.bossStage = 1;
             
             // Active attack states
             this.state = 'hover';
@@ -2683,22 +2724,94 @@
         }
 
         takeDamage(amount, sourceBody = null) {
-            // Central core is immune unless hit by its own flail
-            if (sourceBody && sourceBody.isFlail) {
-                if (this.hitCooldown <= 0) {
-                    this.hitCooldown = 30;
-                    this.hp -= amount;
-                    SoundFX.playHit();
-                    SoundFX.playExplosion(0.8);
-                    shakeAmount = Math.max(shakeAmount, 24);
-                    createExplosion(this.body.position.x, this.body.position.y, '#f59e0b', 30);
-                    createExplosion(this.body.position.x, this.body.position.y, '#e11d48', 25);
+            if (this.isDying || this.hitCooldown > 0) return;
+            
+            let validHit = false;
+            if (this.bossStage < 3) {
+                // Stage 1 & 2: Immune to psychic slam. Only damaged by own flail
+                if (sourceBody && sourceBody.isFlail) validHit = true;
+            } else {
+                // Stage 3: Can only be damaged by being psychically slammed into the ground
+                if (sourceBody && sourceBody.isStatic && this.body.isThrown) validHit = true;
+            }
 
-                    if (this.hp <= 0) {
-                        this.hp = 0;
-                        this.die();
-                    }
+            if (validHit) {
+                this.hitCooldown = 30;
+                this.hp -= amount;
+                SoundFX.playHit();
+                SoundFX.playExplosion(this.bossStage === 3 ? 1.2 : 0.8);
+                shakeAmount = Math.max(shakeAmount, 24);
+                createExplosion(this.body.position.x, this.body.position.y, '#f59e0b', 30);
+                createExplosion(this.body.position.x, this.body.position.y, '#e11d48', 25);
+
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.advanceStage();
                 }
+            }
+        }
+
+        advanceStage() {
+            if (this.bossStage === 1) {
+                this.bossStage = 2;
+                this.hp = 1000;
+                this.maxHp = 1000;
+                this.hitCooldown = 60;
+                this.canBeGrabbed = false; // Stage 2: Still NOT grabbable
+                
+                // Break current flail
+                if (this.flailEntity) {
+                    createExplosion(this.flailEntity.body.position.x, this.flailEntity.body.position.y, '#94a3b8', 40);
+                    this.flailEntity.die();
+                }
+
+                // Grow an even longer, heavier chain and larger flail ball
+                this.chainLength = 320;
+                this.rotationSpeed = 0.045; // Slower enrage swinging
+
+                const flailX = this.body.position.x + Math.cos(this.angle) * this.chainLength;
+                const flailY = this.body.position.y + Math.sin(this.angle) * this.chainLength;
+                const flailBody = Bodies.circle(flailX, flailY, 65, {
+                    density: 0.02,
+                    restitution: 0.45,
+                    friction: 0.1
+                });
+                flailBody.isFlail = true;
+                this.flailEntity = new Entity(flailBody, 99999, 'flail', 6.5);
+                this.flailEntity.canBeGrabbed = true;
+                this.flailEntity.bossParent = this;
+
+                SoundFX.playExplosion(1.5);
+                shakeAmount = 40;
+                createExplosion(this.body.position.x, this.body.position.y, '#ef4444', 50);
+            }
+            else if (this.bossStage === 2) {
+                this.bossStage = 3;
+                this.hp = 1500;
+                this.maxHp = 1500;
+                this.hitCooldown = 40;
+                
+                // It is finally vulnerable to Steve's psychic powers!
+                this.canBeGrabbed = true;
+                this.weight = 8.5; // Very heavy, but throwable
+
+                if (this.flailEntity) {
+                    createExplosion(this.flailEntity.body.position.x, this.flailEntity.body.position.y, '#94a3b8', 50);
+                    this.flailEntity.die();
+                    this.flailEntity = null;
+                }
+
+                // Grow significantly in size
+                Matter.Body.scale(this.body, 1.25, 1.25);
+                this.radius *= 1.25;
+                this.state = 'stage3_chase';
+
+                SoundFX.playExplosion(2.2);
+                shakeAmount = 55;
+                createExplosion(this.body.position.x, this.body.position.y, '#ef4444', 80);
+            }
+            else if (this.bossStage === 3) {
+                this.die(); // True Final Death
             }
         }
 
@@ -2717,6 +2830,51 @@
 
             const pos = this.body.position;
             if (this.hitCooldown > 0) this.hitCooldown--;
+
+            if (this.bossStage === 3) {
+                this.angle += 0.28; // Rapid aggressive spin
+                
+                if (!this.body.isThrown && player && !player.isDying) {
+                    // Chase player aggressively through the air
+                    const dx = player.body.position.x - pos.x;
+                    const dy = player.body.position.y - pos.y;
+                    const dist = Math.hypot(dx, dy) || 1;
+                    
+                    this.hoverTimer += 0.05;
+                    const swoopX = Math.cos(this.hoverTimer) * 5;
+                    const swoopY = Math.sin(this.hoverTimer * 1.3) * 5;
+
+                    Matter.Body.applyForce(this.body, this.body.position, {
+                        x: (dx / dist) * 0.003 + swoopX * 0.0004,
+                        y: (dy / dist) * 0.003 + swoopY * 0.0004
+                    });
+
+                    // Cap maximum flight speed so Steve has a chance to grab it
+                    const velMag = Math.hypot(this.body.velocity.x, this.body.velocity.y);
+                    if (velMag > 13) {
+                        Matter.Body.setVelocity(this.body, {
+                            x: (this.body.velocity.x / velMag) * 13,
+                            y: (this.body.velocity.y / velMag) * 13
+                        });
+                    }
+                }
+
+                // Force boundaries strictly inside the arena so the boss CANNOT fall off the map and die easily
+                let clamped = false;
+                let cx = pos.x, cy = pos.y;
+                if (pos.x < 50) { cx = 50; clamped = true; }
+                if (pos.x > 1390) { cx = 1390; clamped = true; }
+                if (pos.y < -100) { cy = 50; clamped = true; }
+                if (pos.y > 850) { cy = 830; clamped = true; } // Above standard floor/pit
+                
+                if (clamped) {
+                    Matter.Body.setPosition(this.body, { x: cx, y: cy });
+                    if (pos.y > 850) {
+                        Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.8, y: -8 }); // Bounce up
+                    }
+                }
+                return; // Skip Stage 1/2 hovering & flail logic
+            }
 
             // Active attack state machine
             this.stateTimer++;
@@ -2825,7 +2983,9 @@
 
                 // Check collision between heavy flail and central core
                 const distToCore = Math.hypot(fb.position.x - pos.x, fb.position.y - pos.y);
-                if (distToCore < this.radius + 44) {
+                const flailRad = this.bossStage === 2 ? 65 : 44;
+                
+                if (distToCore < this.radius + flailRad) {
                     const flailSpeed = Math.hypot(fb.velocity.x, fb.velocity.y);
                     if (flailSpeed > 3.5 || isHeld) {
                         this.takeDamage(35, fb);
@@ -2880,14 +3040,16 @@
                 // Draw swinging faceless spike flail (larger)
                 ctx.save();
                 ctx.translate(fpos.x, fpos.y);
-                const spikeCountFlail = 8;
+                const flailRad = this.bossStage === 2 ? 65 : 44;
+                const spikeCountFlail = this.bossStage === 2 ? 12 : 8;
+                
                 for (let i = 0; i < spikeCountFlail; i++) {
-                    const ang = (i / spikeCountFlail) * Math.PI * 2 + this.angle * 2.2;
+                    const ang = (i / spikeCountFlail) * Math.PI * 2 + this.angle * (this.bossStage === 2 ? 1.5 : 2.2);
                     ctx.fillStyle = '#334155';
                     ctx.beginPath();
-                    ctx.moveTo(Math.cos(ang - 0.25) * 38, Math.sin(ang - 0.25) * 38);
-                    ctx.lineTo(Math.cos(ang) * 62, Math.sin(ang) * 62);
-                    ctx.lineTo(Math.cos(ang + 0.25) * 38, Math.sin(ang + 0.25) * 38);
+                    ctx.moveTo(Math.cos(ang - 0.25) * (flailRad * 0.85), Math.sin(ang - 0.25) * (flailRad * 0.85));
+                    ctx.lineTo(Math.cos(ang) * (flailRad * 1.4), Math.sin(ang) * (flailRad * 1.4));
+                    ctx.lineTo(Math.cos(ang + 0.25) * (flailRad * 0.85), Math.sin(ang + 0.25) * (flailRad * 0.85));
                     ctx.closePath();
                     ctx.fill();
                 }
@@ -2895,7 +3057,7 @@
                 ctx.strokeStyle = '#94a3b8';
                 ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.arc(0, 0, 44, 0, Math.PI * 2);
+                ctx.arc(0, 0, flailRad, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
                 ctx.restore();
@@ -2904,6 +3066,12 @@
             // Draw Central Spike Core (enlarged)
             ctx.save();
             ctx.translate(pos.x, pos.y);
+
+            if (this.bossStage === 3) {
+                // Intense red glow when raging in final stage
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 30 + Math.sin(Date.now() / 50) * 15;
+            }
 
             // Windup attack glow and shake
             if (this.state === 'windup') {
@@ -2983,7 +3151,64 @@
             ctx.fill();
 
             ctx.restore();
-            this.drawHpBar(ctx, this.radius + 26);
+        }
+
+        drawHpBar(ctx, yOffset) {
+            if (this.hp <= 0 || this.isDying) return;
+            
+            const pos = this.body.position;
+            
+            // Massive Boss HP Bar floating directly above its head
+            const barW = 240;
+            const barH = 16;
+            const x = pos.x - barW / 2;
+            const y = pos.y - this.radius - 55; 
+
+            ctx.save();
+            
+            // Dynamic Boss Title based on Stage
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 18px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.shadowColor = 'rgba(0,0,0,0.85)';
+            ctx.shadowBlur = 8;
+            
+            let bossTitle = "IRON JUGGERNAUT";
+            if (this.bossStage === 2) bossTitle = "IRON JUGGERNAUT - ENRAGED";
+            if (this.bossStage === 3) bossTitle = "IRON JUGGERNAUT - UNBOUND";
+            
+            ctx.fillText(bossTitle, pos.x, y - 8);
+
+            // Bar Background
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.fillRect(x, y, barW, barH);
+
+            // Health Fill
+            const hpRatio = Math.max(0, Math.min(1.0, this.hp / this.maxHp));
+            const hpGrad = ctx.createLinearGradient(x, y, x + barW, y);
+            
+            // Color shifts dynamically depending on the current boss stage
+            if (this.bossStage === 1) {
+                hpGrad.addColorStop(0, '#ef4444');
+                hpGrad.addColorStop(1, '#b91c1c');
+            } else if (this.bossStage === 2) {
+                hpGrad.addColorStop(0, '#f97316'); // Angry Orange
+                hpGrad.addColorStop(1, '#c2410c');
+            } else {
+                hpGrad.addColorStop(0, '#a855f7'); // Void Purple
+                hpGrad.addColorStop(1, '#7e22ce');
+            }
+
+            ctx.fillStyle = hpGrad;
+            ctx.fillRect(x + 2, y + 2, (barW - 4) * hpRatio, barH - 4);
+
+            // Thick Bar Border
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3.0;
+            ctx.strokeRect(x, y, barW, barH);
+            
+            ctx.restore();
         }
     }
 
@@ -3296,7 +3521,9 @@
         SoundFX.init();
         SoundFX.startMusic();
         document.getElementById('title-screen').style.display = 'none';
+        document.getElementById('hud-layer').style.display = 'block';
         gameStarted = true;
+        isPaused = false;
         initGame();
     }
 
@@ -3304,7 +3531,9 @@
         SoundFX.init();
         SoundFX.startMusic();
         document.getElementById('game-over-box').style.display = 'none';
+        document.getElementById('hud-layer').style.display = 'block';
         gameStarted = true;
+        isPaused = false;
         initGame();
     }
 
@@ -3425,6 +3654,9 @@
     window.addEventListener('keydown', e => {
         isMobileDevice = false;
         if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+        if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
+            togglePause();
+        }
     });
     window.addEventListener('keyup', e => {
         if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
@@ -3943,8 +4175,20 @@
 
     Events.on(engine, 'beforeUpdate', () => {
         entities.forEach(e => {
-            if (e.body.isThrown && e.body.speed < 2) {
-                e.body.isThrown = false;
+            if (e.body.isThrown) {
+                // Aggressive ground friction dampening to ensure thrown enemies settle quickly
+                if (Math.abs(e.body.velocity.y) < 2.0 && e.type !== 'slime') {
+                    Matter.Body.setVelocity(e.body, { x: e.body.velocity.x * 0.85, y: e.body.velocity.y });
+                }
+                
+                if (e.body.speed < 2.5) {
+                    e.body.isThrown = false;
+                }
+            } else if (e.type === 'zombie' || e.type === 'golem' || e.type === 'skeleton' || e.type === 'maw') {
+                // Dampen horizontal sliding from explosion knockbacks so they can regain footing and walk
+                if (Math.abs(e.body.velocity.x) > 3.0 && Math.abs(e.body.velocity.y) < 1.5) {
+                    Matter.Body.setVelocity(e.body, { x: e.body.velocity.x * 0.85, y: e.body.velocity.y });
+                }
             }
         });
     });
@@ -4138,6 +4382,8 @@
     function gameLoop() {
         if (!isLooping) return;
         requestAnimationFrame(gameLoop);
+        
+        if (isPaused) return;
 
         if (gameStarted) {
             Engine.update(engine, 1000 / 60);
