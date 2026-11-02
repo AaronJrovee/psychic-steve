@@ -2699,7 +2699,7 @@
             this.canBeGrabbed = false; // Stage 1: NOT grabbable
             this.isEntering = false;
             this.angle = 0;
-            this.rotationSpeed = 0.035; // Slower, more deliberate swinging
+            this.rotationSpeed = 0.025; // Slower, more deliberate swinging
             this.chainLength = 220;     // Extended reach
             this.hitCooldown = 0;
             this.bossStage = 1;
@@ -2767,7 +2767,7 @@
 
                 // Grow an even longer, heavier chain and larger flail ball
                 this.chainLength = 320;
-                this.rotationSpeed = 0.045; // Slower enrage swinging
+                this.rotationSpeed = 0.035; // Slower enrage swinging
 
                 const flailX = this.body.position.x + Math.cos(this.angle) * this.chainLength;
                 const flailY = this.body.position.y + Math.sin(this.angle) * this.chainLength;
@@ -2804,7 +2804,8 @@
                 // Grow significantly in size
                 Matter.Body.scale(this.body, 1.25, 1.25);
                 this.radius *= 1.25;
-                this.state = 'stage3_chase';
+                this.state = 'stage3_hover';
+                this.stateTimer = 0;
 
                 SoundFX.playExplosion(2.2);
                 shakeAmount = 55;
@@ -2834,28 +2835,53 @@
             if (this.bossStage === 3) {
                 this.angle += 0.28; // Rapid aggressive spin
                 
-                if (!this.body.isThrown && player && !player.isDying) {
-                    // Chase player aggressively through the air
-                    const dx = player.body.position.x - pos.x;
-                    const dy = player.body.position.y - pos.y;
-                    const dist = Math.hypot(dx, dy) || 1;
+                const isHeld = player && player.grabbedEntity === this;
+                
+                if (isHeld) {
+                    this.stateTimer = 0; // Pause AI while being flung
+                } else if (!this.body.isThrown && player && !player.isDying) {
+                    this.stateTimer++;
                     
-                    this.hoverTimer += 0.05;
-                    const swoopX = Math.cos(this.hoverTimer) * 5;
-                    const swoopY = Math.sin(this.hoverTimer * 1.3) * 5;
-
-                    Matter.Body.applyForce(this.body, this.body.position, {
-                        x: (dx / dist) * 0.003 + swoopX * 0.0004,
-                        y: (dy / dist) * 0.003 + swoopY * 0.0004
-                    });
-
-                    // Cap maximum flight speed so Steve has a chance to grab it
-                    const velMag = Math.hypot(this.body.velocity.x, this.body.velocity.y);
-                    if (velMag > 13) {
-                        Matter.Body.setVelocity(this.body, {
-                            x: (this.body.velocity.x / velMag) * 13,
-                            y: (this.body.velocity.y / velMag) * 13
+                    if (this.state === 'stage3_hover') {
+                        // Drift slowly above Steve
+                        const dx = player.body.position.x - pos.x;
+                        const dy = player.body.position.y - 180 - pos.y;
+                        Matter.Body.applyForce(this.body, this.body.position, {
+                            x: dx * 0.00008,
+                            y: dy * 0.00008
                         });
+                        if (this.stateTimer > 100) {
+                            this.state = 'stage3_windup';
+                            this.stateTimer = 0;
+                        }
+                    } else if (this.state === 'stage3_windup') {
+                        // Freeze and shake before charging
+                        Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
+                        if (this.stateTimer > 45) {
+                            this.state = 'stage3_charge';
+                            this.stateTimer = 0;
+                            SoundFX.playThrow();
+                            const dx = player.body.position.x - pos.x;
+                            const dy = player.body.position.y - pos.y;
+                            const dist = Math.hypot(dx, dy) || 1;
+                            Matter.Body.setVelocity(this.body, { x: (dx / dist) * 25, y: (dy / dist) * 25 });
+                        }
+                    } else if (this.state === 'stage3_charge') {
+                        // Fast charge towards player
+                        if (this.stateTimer > 35 || Math.hypot(this.body.velocity.x, this.body.velocity.y) < 3) {
+                            this.state = 'stage3_rest';
+                            this.stateTimer = 0;
+                        }
+                        if (this.stateTimer % 4 === 0) createExplosion(pos.x, pos.y + this.radius, '#ef4444', 3);
+                    } else if (this.state === 'stage3_rest') {
+                        // Exhausted! Stop moving so player can easily grab and slam it
+                        Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.8, y: this.body.velocity.y * 0.8 });
+                        if (this.stateTimer > 90) { // 1.5 seconds of rest vulnerability
+                            this.state = 'stage3_hover';
+                            this.stateTimer = 0;
+                        }
+                    } else {
+                        this.state = 'stage3_hover';
                     }
                 }
 
@@ -3159,16 +3185,16 @@
             const pos = this.body.position;
             
             // Massive Boss HP Bar floating directly above its head
-            const barW = 240;
-            const barH = 16;
+            const barW = 480;
+            const barH = 24;
             const x = pos.x - barW / 2;
-            const y = pos.y - this.radius - 55; 
+            const y = pos.y - this.radius - 90; 
 
             ctx.save();
             
             // Dynamic Boss Title based on Stage
             ctx.fillStyle = '#ffffff';
-            ctx.font = '900 18px Inter';
+            ctx.font = '900 24px Inter';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
             ctx.shadowColor = 'rgba(0,0,0,0.85)';
@@ -3178,7 +3204,7 @@
             if (this.bossStage === 2) bossTitle = "IRON JUGGERNAUT - ENRAGED";
             if (this.bossStage === 3) bossTitle = "IRON JUGGERNAUT - UNBOUND";
             
-            ctx.fillText(bossTitle, pos.x, y - 8);
+            ctx.fillText(bossTitle, pos.x, y - 10);
 
             // Bar Background
             ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
