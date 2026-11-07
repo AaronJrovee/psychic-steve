@@ -718,7 +718,6 @@
     function skipWave() {
         if (!gameStarted || (player && player.isDying)) return;
         
-        // Purge current wave active enemies cleanly
         for (let i = entities.length - 1; i >= 0; i--) {
             const e = entities[i];
             if (e !== player) {
@@ -939,7 +938,7 @@
     // --- BOSS SPIKE WEAPONS (STAGE 2) ---
     class BossSpike extends Entity {
         constructor(x, y, angle) {
-            // Completely sensor body with zero gravity, friction, and restitution
+            // Sensor body with zero gravity, friction, and restitution
             const body = Bodies.polygon(x, y, 3, 18, {
                 angle: angle,
                 density: 0.0001,
@@ -952,12 +951,14 @@
             body.ignoreGravity = true; // Matter.js native gravity bypass
             super(body, 1, 'boss_spike', 0.2);
             this.isBossSpike = true;
-            this.state = 'slowmo';
+            this.state = 'burst'; // Start by bursting outward away from boss
             this.playerOwned = false;
             this.thrownVelocity = null;
-            // Variable curvature offsets for graceful sweeping spiral paths
+            this.spawnOrigin = { x: x, y: y };
+            this.burstAngle = angle;
             this.curveSpeed = (Math.random() - 0.5) * 0.02;
             this.currentCurveAngle = angle;
+            this.animPhase = Math.random() * Math.PI * 2;
         }
 
         checkBossCollision() {
@@ -997,7 +998,7 @@
             // Check Boss damage immediately if player has taken ownership
             if (this.checkBossCollision()) return;
 
-            // Once thrown by Steve: flies straight with ZERO gravity, ZERO drag, ZERO physics
+            // Once thrown by Steve: flies straight in thrown direction with ZERO gravity, ZERO drag, ZERO physics
             if (this.playerOwned && this.state === 'thrown') {
                 if (this.thrownVelocity) {
                     Matter.Body.setPosition(this.body, {
@@ -1022,20 +1023,42 @@
                         return;
                     }
                 }
+            } else if (this.state === 'burst') {
+                // Spikes fly outward radially away from the boss before slow-mo starts
+                const burstSpeed = 12.0;
+                const nextX = pos.x + Math.cos(this.burstAngle) * burstSpeed;
+                const nextY = pos.y + Math.sin(this.burstAngle) * burstSpeed;
+                Matter.Body.setPosition(this.body, { x: nextX, y: nextY });
+                Matter.Body.setAngle(this.body, this.burstAngle + Math.PI / 2);
+
+                const distFromOrigin = Math.hypot(nextX - this.spawnOrigin.x, nextY - this.spawnOrigin.y);
+                if (distFromOrigin >= 230) {
+                    this.state = 'slowmo';
+                }
             } else if (this.state === 'slowmo') {
-                // Pure 360-degree homing: moves up, down, left, right strictly toward Steve
+                // Smooth slow-motion floating kinematics towards Steve
+                this.animPhase += 0.06;
                 if (player && !player.isDying) {
                     const dx = player.body.position.x - pos.x;
                     const dy = player.body.position.y - pos.y;
                     const dist = Math.hypot(dx, dy) || 1;
-                    const directAngle = Math.atan2(dy, dx);
-                    
-                    // Always point tip directly towards the player
-                    Matter.Body.setAngle(this.body, directAngle + Math.PI / 2);
+                    const targetAngle = Math.atan2(dy, dx) + Math.PI / 2;
 
-                    const ultraSlowSpeed = 0.35; // Crawling slow-mo speed
-                    const vx = (dx / dist) * ultraSlowSpeed;
-                    const vy = (dy / dist) * ultraSlowSpeed;
+                    // Smooth angular slerp interpolation to prevent sharp angle snapping
+                    let angleDiff = targetAngle - this.body.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    const smoothedAngle = this.body.angle + angleDiff * 0.12;
+                    Matter.Body.setAngle(this.body, smoothedAngle);
+
+                    const slowSpeed = 1.6;
+                    // Lateral psychic oscillation adds a hypnotic floating glide
+                    const perpX = -dy / dist;
+                    const perpY = dx / dist;
+                    const waveOffset = Math.sin(this.animPhase) * 0.35;
+
+                    const vx = (dx / dist) * slowSpeed + perpX * waveOffset;
+                    const vy = (dy / dist) * slowSpeed + perpY * waveOffset;
 
                     Matter.Body.setPosition(this.body, {
                         x: pos.x + vx,
@@ -1060,7 +1083,7 @@
                     return;
                 }
             } else if (this.state === 'release') {
-                // Continuous 360-degree homing tracking at normal flight speed (can move UP or DOWN)
+                // Continuous 360-degree homing tracking at normal flight speed
                 if (player && !player.isDying && !this.playerOwned) {
                     const dx = player.body.position.x - pos.x;
                     const dy = player.body.position.y - pos.y;
@@ -1069,7 +1092,7 @@
                     
                     Matter.Body.setAngle(this.body, directAngle + Math.PI / 2);
 
-                    const releaseSpeed = 16;
+                    const releaseSpeed = 17;
                     Matter.Body.setPosition(this.body, {
                         x: pos.x + (dx / dist) * releaseSpeed,
                         y: pos.y + (dy / dist) * releaseSpeed
@@ -1085,7 +1108,7 @@
                         return;
                     }
                 } else {
-                    // Thrown/player-owned fallback straight line
+                    // Thrown/player-owned straight trajectory
                     const ang = this.body.angle - Math.PI / 2;
                     const speed = 22;
                     Matter.Body.setPosition(this.body, {
@@ -1157,7 +1180,6 @@
         takeDamage(amount, sourceBody = null) {
             if (this.invulnerableTimer > 0 && amount < 1000) return;
             
-            // Cap maximum damage taken in a single hit at 50 HP (unless an intentional wipe like 1000+)
             const actualDamage = amount >= 1000 ? amount : Math.min(50, amount);
 
             super.takeDamage(actualDamage, sourceBody);
@@ -1184,7 +1206,7 @@
                     }
                     Body.setVelocity(b, { x: vx, y: vy });
 
-                    // Stage 2 Spike throw: if still in slow-mo, spike travels at a slow pace
+                    // Stage 2 Spike throw: accurately flies in the direction thrown
                     if (this.grabbedEntity.isBossSpike) {
                         let isSlowMoNow = false;
                         for (let i = 0; i < entities.length; i++) {
@@ -1193,15 +1215,24 @@
                                 break;
                             }
                         }
-                        // Slow returned spikes while in slow-motion, standard speed once unpaused
-                        const throwSpeed = isSlowMoNow ? 5.5 : Math.max(22, (spd || 15) * 1.3);
-                        const throwAng = Math.atan2(vy, vx);
+                        
+                        // Determine throw angle accurately from velocity vector, falling back to mouse cursor position
+                        let throwAng;
+                        if (spd > 1.2) {
+                            throwAng = Math.atan2(vy, vx);
+                        } else {
+                            throwAng = Math.atan2(mouse.y - b.position.y, mouse.x - b.position.x);
+                        }
+
+                        // Consistent ballistic speed along release trajectory
+                        const throwSpeed = isSlowMoNow ? 7.5 : Math.max(22, (spd || 16) * 1.3);
                         this.grabbedEntity.thrownVelocity = {
                             x: Math.cos(throwAng) * throwSpeed,
                             y: Math.sin(throwAng) * throwSpeed
                         };
                         this.grabbedEntity.state = 'thrown';
                         this.grabbedEntity.playerOwned = true;
+                        // Orient spike tip forward along its flight trajectory
                         Matter.Body.setAngle(b, throwAng + Math.PI / 2);
                     }
 
@@ -1253,7 +1284,7 @@
 
             Body.setVelocity(this.body, { x: vx, y: vy });
 
-            // Ground sensor ray check - Jump off any solid or object
+            // Ground sensor ray check
             if (this.canJump) {
                 const footY = this.body.position.y + 60;
                 const footX = this.body.position.x;
@@ -1299,7 +1330,6 @@
                     for (let i = 0; i < entities.length; i++) {
                         const ent = entities[i];
                         if (ent === this || ent.isDying || ent.markedForDeletion || ent.canBeGrabbed === false) continue;
-                        // Prevent targeting the boss directly in Stages 1 and 2
                         if (ent.type === 'spike_boss' && ent.bossStage < 3) continue;
 
                         const b = ent.body;
@@ -1354,7 +1384,6 @@
                         this.grabbedEntity = null;
                         this.grabTimer = 0;
                     } else if (this.grabbedEntity.type === 'spike_boss' && this.grabbedEntity.bossStage < 3) {
-                        // Strict fail-safe: immediately drop boss if in stages 1 or 2
                         this.releaseGrip(false);
                         return;
                     } else {
@@ -1368,7 +1397,6 @@
 
                         this.grabTimer--;
                         if (this.grabTimer <= 0) {
-                            // Flail remains eternally grabbable even if grab duration expires
                             if (this.grabbedEntity.type !== 'flail') {
                                 this.grabbedEntity.canBeGrabbed = false;
                             }
@@ -2141,15 +2169,13 @@
             const jawCycle = Math.sin(this.jawTimer);
             this.isOpen = jawCycle > 0.05;
 
-            // When mouth is open it is featherweight (easy to lift).
-            // When mouth is closed it becomes heavy and dense.
             this.weight = this.isOpen ? 0.85 : 3.8;
 
             if (this.chompCooldown > 0) {
                 this.chompCooldown--;
             }
 
-            // Devour items in path without damaging self (boxes, bombs)
+            // Devour boxes and bombs
             if (this.isOpen) {
                 for (let i = 0; i < entities.length; i++) {
                     const e = entities[i];
@@ -2213,7 +2239,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // Upper Teeth
+            // Teeth
             ctx.fillStyle = '#f8fafc';
             ctx.beginPath();
             const teethCount = 4;
@@ -2226,7 +2252,7 @@
             }
             ctx.fill();
 
-            // Slitted Eye
+            // Eye
             const eyeX = dir * 10;
             const eyeY = -18;
             ctx.fillStyle = '#eab308';
@@ -2257,7 +2283,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // Lower Teeth
             ctx.fillStyle = '#f8fafc';
             ctx.beginPath();
             for (let i = 0; i < teethCount; i++) {
@@ -2745,7 +2770,7 @@
             this.bossStage = 1;
             this.activeSpikes = [];
             this.isSloMo = false;
-            this.flailReboundTimer = 0; // Cooldown timer until flail can be grabbed again
+            this.flailReboundTimer = 0;
             
             this.state = 'hover';
             this.stateTimer = 0;
@@ -2753,7 +2778,6 @@
 
             const flailX = x + Math.cos(this.angle) * this.chainLength;
             const flailY = y + Math.sin(this.angle) * this.chainLength;
-            // Enlarged flail ball hitbox (radius 58) for reliable psychic grabbing
             const flailBody = Bodies.circle(flailX, flailY, 58, {
                 density: 0.012, restitution: 0.45, friction: 0.1
             });
@@ -2803,49 +2827,105 @@
 
         advanceStage() {
             if (this.bossStage === 1) {
-                this.bossStage = 2;
-                this.hp = 25; // 25 spikes to defeat stage 2
-                this.maxHp = 25;
-                this.hitCooldown = 60;
+                // Enter pained transition state before Stage 2
+                this.state = 'transition_1_to_2';
+                this.stateTimer = 0;
+                this.hitCooldown = 90;
                 this.canBeGrabbed = false;
-                
+
                 if (this.flailEntity) {
                     createExplosion(this.flailEntity.body.position.x, this.flailEntity.body.position.y, '#94a3b8', 40);
                     this.flailEntity.die();
                     this.flailEntity = null;
                 }
 
-                this.state = 'stage2_idle';
-                this.stateTimer = 0;
-
-                SoundFX.playExplosion(1.5);
-                shakeAmount = 40;
-                createExplosion(this.body.position.x, this.body.position.y, '#c084fc', 50);
+                SoundFX.playHit();
+                SoundFX.playExplosion(1.0);
+                shakeAmount = 30;
+                Matter.Body.setVelocity(this.body, { x: 0, y: -4 });
             }
             else if (this.bossStage === 2) {
-                this.bossStage = 3;
-                this.hp = 12; // 12 slams to shatter stage 3
-                this.maxHp = 12;
-                this.hitCooldown = 60;
+                // Enter pained transition state before Stage 3
+                this.state = 'transition_2_to_3';
+                this.stateTimer = 0;
+                this.hitCooldown = 95;
                 this.canBeGrabbed = false;
-                this.weight = 5.2; // Manageable baseline weight
-                
+
                 this.activeSpikes.forEach(s => { if (!s.isDying) s.die(); });
                 this.activeSpikes = [];
                 this.isSloMo = false;
 
-                Matter.Body.scale(this.body, 1.25, 1.25);
-                this.radius *= 1.25;
-                this.state = 'stage3_whirl';
-                this.stateTimer = 0;
-
-                SoundFX.playExplosion(2.2);
-                shakeAmount = 55;
-                createExplosion(this.body.position.x, this.body.position.y, '#f97316', 80);
+                SoundFX.playHit();
+                SoundFX.playExplosion(1.2);
+                shakeAmount = 35;
+                Matter.Body.setVelocity(this.body, { x: 0, y: -5 });
             }
             else if (this.bossStage === 3) {
                 this.die(); 
             }
+        }
+
+        finalizeStage2() {
+            this.bossStage = 2;
+            this.hp = 25; // 25 spikes to defeat stage 2
+            this.maxHp = 25;
+            this.hitCooldown = 60;
+            this.canBeGrabbed = false;
+            this.state = 'stage2_idle';
+            this.stateTimer = 0;
+
+            SoundFX.playExplosion(1.5);
+            shakeAmount = 40;
+            createExplosion(this.body.position.x, this.body.position.y, '#c084fc', 50);
+        }
+
+        finalizeStage3() {
+            this.bossStage = 3;
+            this.hp = 12; // 12 slams to shatter stage 3
+            this.maxHp = 12;
+            this.hitCooldown = 60;
+            this.canBeGrabbed = false;
+            this.weight = 1.2; 
+            this.slamCount = 0;
+            this.vulnerableTimer = 0;
+            this.regrabCooldown = 0;
+            this.body.ignoreGravity = true;
+
+            // Slower initial pong diagonal velocity that sweeps the arena
+            this.pongVx = 14.0 * (Math.random() > 0.5 ? 1 : -1);
+            this.pongVy = 10.5 * (Math.random() > 0.5 ? 1 : -1);
+
+            Matter.Body.scale(this.body, 1.25, 1.25);
+            this.radius *= 1.25;
+            this.state = 'stage3_whirl';
+            this.stateTimer = 0;
+
+            SoundFX.playExplosion(2.2);
+            shakeAmount = 55;
+            createExplosion(this.body.position.x, this.body.position.y, '#f97316', 80);
+        }
+
+        triggerBreakout() {
+            if (player && player.grabbedEntity === this) {
+                player.releaseGrip(false);
+            }
+            this.canBeGrabbed = false;
+            this.body.isThrown = false;
+            this.state = 'stage3_whirl';
+            this.stateTimer = 0;
+            this.vulnerableTimer = 0;
+            this.slamCount = 0;
+            this.regrabCooldown = 0;
+            this.weight = 5.2;
+
+            const ang = -Math.PI * 0.35 + (Math.random() - 0.5) * 0.5;
+            this.pongVx = Math.cos(ang) * 14.5 * (Math.random() > 0.5 ? 1 : -1);
+            this.pongVy = -Math.abs(Math.sin(ang) * 12.0);
+            Matter.Body.setVelocity(this.body, { x: this.pongVx, y: this.pongVy });
+
+            SoundFX.playExplosion(1.5);
+            shakeAmount = 35;
+            createExplosion(this.body.position.x, this.body.position.y, '#f97316', 50);
         }
 
         die(sourceBody = null) {
@@ -2878,16 +2958,91 @@
             const pos = this.body.position;
             if (this.hitCooldown > 0) this.hitCooldown--;
 
+            // Handle intermediate pained transition states
+            if (this.state === 'transition_1_to_2') {
+                this.stateTimer++;
+                // Shiver and shudder in agony
+                const shiverX = (Math.random() - 0.5) * 8;
+                const shiverY = (Math.random() - 0.5) * 5;
+                Matter.Body.setVelocity(this.body, { x: shiverX * 0.4, y: shiverY * 0.4 });
+
+                if (this.stateTimer % 6 === 0) {
+                    particles.push(new Particle(pos.x + (Math.random() - 0.5) * 60, pos.y + (Math.random() - 0.5) * 60, '#cbd5e1', 5, 4, 25));
+                }
+
+                if (this.stateTimer >= 80) {
+                    this.finalizeStage2();
+                }
+                return;
+            }
+
+            if (this.state === 'transition_2_to_3') {
+                this.stateTimer++;
+                // Shiver and shudder in agony with fiery sparks
+                const shiverX = (Math.random() - 0.5) * 10;
+                const shiverY = (Math.random() - 0.5) * 6;
+                Matter.Body.setVelocity(this.body, { x: shiverX * 0.4, y: shiverY * 0.4 });
+
+                if (this.stateTimer % 5 === 0) {
+                    particles.push(new Particle(pos.x + (Math.random() - 0.5) * 70, pos.y + (Math.random() - 0.5) * 70, '#f97316', 7, 5, 25));
+                    particles.push(new Particle(pos.x + (Math.random() - 0.5) * 70, pos.y + (Math.random() - 0.5) * 70, '#ef4444', 6, 4, 20));
+                }
+
+                if (this.stateTimer >= 90) {
+                    this.finalizeStage3();
+                }
+                return;
+            }
+
             // ==================
-            // STAGE 3: ZIP & SLAM
+            // STAGE 3: PONG BOUNCE & SLAM
             // ==================
             if (this.bossStage === 3) {
                 this.angle += 0.28; 
+                this.body.ignoreGravity = true;
                 const isHeld = player && player.grabbedEntity === this;
                 
+                if (this.regrabCooldown > 0) {
+                    this.regrabCooldown--;
+                    this.canBeGrabbed = false;
+                } else if (this.state === 'stage3_stuck' || this.state === 'stage3_vulnerable') {
+                    this.canBeGrabbed = true;
+                }
+
+                // Break platforms on contact during Stage 3
+                for (let i = 0; i < breakablePlatforms.length; i++) {
+                    const plat = breakablePlatforms[i];
+                    if (!plat.isBroken && Matter.Bounds.overlaps(this.body.bounds, plat.bounds)) {
+                        plat.isBroken = true;
+                        Composite.remove(engine.world, plat);
+                        SoundFX.playHit();
+                        shakeAmount = Math.max(shakeAmount, 16);
+                        const woodColors = ['#D2B48C', '#8B4513', '#A0522D', '#CD853F', '#DEB887'];
+                        for (let j = 0; j < 25; j++) {
+                            const c = woodColors[Math.floor(Math.random() * woodColors.length)];
+                            particles.push(new Particle(
+                                plat.position.x + (Math.random() - 0.5) * plat.origW,
+                                plat.position.y + (Math.random() - 0.5) * plat.origH,
+                                c, 18, Math.random() * 8 + 4, 40 + Math.random() * 20, 'shard'
+                            ));
+                        }
+                    }
+                }
+
+                // Vulnerable timer (10 sec / 600 ticks total across slams while trapped/vulnerable)
+                if (this.state === 'stage3_stuck' || this.state === 'stage3_vulnerable') {
+                    this.vulnerableTimer = (this.vulnerableTimer || 0) + 1;
+                    if (this.slamCount >= 3 || this.vulnerableTimer >= 600) {
+                        this.triggerBreakout();
+                        return;
+                    }
+                }
+
                 if (isHeld) {
-                    this.stateTimer = 0; 
-                    this.state = 'stage3_stuck'; 
+                    // Undroppable psychic clutch: keep grip topped up while held
+                    player.grabTimer = 120;
+                    this.weight = 1.2;
+                    this.state = 'stage3_vulnerable';
                 } else if (!this.body.isThrown && player && !player.isDying) {
                     this.stateTimer++;
                     
@@ -2895,95 +3050,148 @@
                         this.canBeGrabbed = false;
                         this.weight = 5.2;
 
-                        // Fast aerial whizzing with rapid velocity changes
-                        if (this.stateTimer % 28 === 0) {
-                            let tx, ty;
-                            // 50% chance to dive directly towards/past Steve; 50% chance to violently zoom to arena high points
-                            if (Math.random() < 0.5) {
-                                tx = player.body.position.x + (Math.random() - 0.5) * 220;
-                                ty = Math.max(160, player.body.position.y - 40 + (Math.random() - 0.5) * 120);
-                            } else {
-                                tx = 180 + Math.random() * 1080;
-                                ty = 120 + Math.random() * 380;
-                            }
-                            const dx = tx - pos.x;
-                            const dy = ty - pos.y;
-                            const dist = Math.hypot(dx, dy) || 1;
-                            const whizzSpeed = 32.0; // Fast whizzing speed
-                            Matter.Body.setVelocity(this.body, { 
-                                x: (dx / dist) * whizzSpeed, 
-                                y: (dy / dist) * whizzSpeed 
-                            });
-                            SoundFX.playThrow();
-                            shakeAmount = Math.max(shakeAmount, 8);
+                        if (!this.pongVx || !this.pongVy) {
+                            this.pongVx = 14.0 * (Math.random() > 0.5 ? 1 : -1);
+                            this.pongVy = 10.5 * (Math.random() > 0.5 ? 1 : -1);
                         }
 
-                        // Trail of fiery psychic friction particles while whizzing
+                        // Slower, controlled diagonal flight across the arena
+                        let curX = pos.x + this.pongVx;
+                        let curY = pos.y + this.pongVy;
+                        let bounced = false;
+
+                        // Wall bounces with slight deflection angle variation to cover entire arena
+                        if (curX <= 80) {
+                            curX = 80;
+                            this.pongVx = Math.abs(this.pongVx);
+                            this.pongVy += (Math.random() - 0.5) * 2.5;
+                            bounced = true;
+                        } else if (curX >= 1360) {
+                            curX = 1360;
+                            this.pongVx = -Math.abs(this.pongVx);
+                            this.pongVy += (Math.random() - 0.5) * 2.5;
+                            bounced = true;
+                        }
+
+                        if (curY <= 110) {
+                            curY = 110;
+                            this.pongVy = Math.abs(this.pongVy);
+                            this.pongVx += (Math.random() - 0.5) * 2.5;
+                            bounced = true;
+                        } else if (curY >= 790) {
+                            curY = 790;
+                            this.pongVy = -Math.abs(this.pongVy);
+                            this.pongVx += (Math.random() - 0.5) * 2.5;
+                            bounced = true;
+                        }
+
+                        // Keep speeds within controlled bounds
+                        const spd = Math.hypot(this.pongVx, this.pongVy);
+                        if (spd < 12 || spd > 18) {
+                            const targetSpd = 15.0;
+                            this.pongVx = (this.pongVx / spd) * targetSpd;
+                            this.pongVy = (this.pongVy / spd) * targetSpd;
+                        }
+
+                        if (bounced) {
+                            SoundFX.playHit();
+                            shakeAmount = Math.max(shakeAmount, 10);
+                            createExplosion(curX, curY, '#f97316', 14);
+                        }
+
+                        Matter.Body.setPosition(this.body, { x: curX, y: curY });
+                        Matter.Body.setVelocity(this.body, { x: this.pongVx, y: this.pongVy });
+
                         if (this.stateTimer % 4 === 0) {
-                            particles.push(new Particle(pos.x, pos.y, '#f97316', 10, Math.random() * 4 + 3, 20));
+                            particles.push(new Particle(pos.x, pos.y, '#f97316', 7, Math.random() * 4 + 3, 22));
                         }
 
-                        if (this.stateTimer > 600) { // 10 seconds of constant aerial whizzing
+                        // After ~7 seconds (420 frames) of arena-covering bounces, target Steve
+                        if (this.stateTimer > 420) { 
                             this.state = 'stage3_pause';
                             this.stateTimer = 0;
+                            this.targetLandingX = player.body.position.x;
                             Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
                         }
                     } else if (this.state === 'stage3_pause') {
                         this.canBeGrabbed = false;
-                        // Ominous vibration warning before dive
-                        if (this.stateTimer > 60) { 
+                        Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
+                        
+                        // Moving landing reticle tracks player position smoothly with lead
+                        if (player && !player.isDying) {
+                            const targetX = Math.max(120, Math.min(1320, player.body.position.x));
+                            this.targetLandingX = (this.targetLandingX || targetX) * 0.85 + targetX * 0.15;
+                        }
+                        
+                        // Flash warning sparks
+                        if (this.stateTimer % 6 === 0) {
+                            particles.push(new Particle(this.targetLandingX, 895, '#ef4444', 6, 4, 18));
+                        }
+                        
+                        // Telegraph pause before high-velocity slam
+                        if (this.stateTimer > 75) { 
                             this.state = 'stage3_dash';
                             this.stateTimer = 0;
-                            const dx = player.body.position.x - pos.x;
-                            const dy = player.body.position.y - pos.y;
+                            const targetY = 820;
+                            const dx = (this.targetLandingX || pos.x) - pos.x;
+                            const dy = targetY - pos.y;
                             const dist = Math.hypot(dx, dy) || 1;
-                            const dashSpeed = 42; // Fast dash straight at player
+                            const dashSpeed = 48; // Fast, decisive targeted slam
                             Matter.Body.setVelocity(this.body, { 
                                 x: (dx / dist) * dashSpeed, 
                                 y: (dy / dist) * dashSpeed 
                             });
-                            SoundFX.playExplosion(1.0);
+                            SoundFX.playExplosion(1.3);
+                            shakeAmount = 24;
                         }
                     } else if (this.state === 'stage3_dash') {
                         this.canBeGrabbed = false;
-                        // Impact ground / buried partially into ground
-                        if (pos.y > 780 || Math.hypot(this.body.velocity.x, this.body.velocity.y) < 4) {
+                        if (pos.y >= 780 || Math.hypot(this.body.velocity.x, this.body.velocity.y) < 4.0) {
                             this.state = 'stage3_stuck';
                             this.stateTimer = 0;
-                            this.canBeGrabbed = true; // Grabbable now!
-                            this.weight = 4.8; // Far less heavy so player can easily lift and slam
+                            this.vulnerableTimer = 0;
+                            this.slamCount = 0;
+                            this.canBeGrabbed = true; 
+                            this.weight = 1.2; 
                             Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
-                            Matter.Body.setPosition(this.body, { x: pos.x, y: Math.min(pos.y, 825) });
+                            Matter.Body.setPosition(this.body, { x: pos.x, y: 820 });
                             SoundFX.playHit();
-                            shakeAmount = 35;
-                            createExplosion(pos.x, pos.y + this.radius, '#78350f', 35, 'shard');
+                            SoundFX.playExplosion(1.4);
+                            shakeAmount = 40;
+                            createExplosion(pos.x, pos.y + this.radius, '#78350f', 40, 'shard');
                         }
                     } else if (this.state === 'stage3_stuck') {
-                        this.canBeGrabbed = true;
-                        this.weight = 4.8; // Clean, responsive grabbability
-                        if (this.stateTimer > 360) { // 6-second window before breaking free
-                            this.state = 'stage3_whirl';
-                            this.stateTimer = 0;
-                            this.canBeGrabbed = false;
-                            this.weight = 5.2; 
-                            Matter.Body.setVelocity(this.body, { x: 0, y: -26 });
-                            SoundFX.playExplosion(0.9);
-                            shakeAmount = 25;
+                        this.weight = 1.2; 
+                        
+                        // Rapid violent shaking while stuck in the ground
+                        const shakeX = (Math.random() - 0.5) * 8;
+                        const shakeY = (Math.random() - 0.5) * 4;
+                        Matter.Body.setPosition(this.body, { x: pos.x + shakeX, y: 820 + shakeY });
+
+                        // Continuous dirt and debris erupting from contact point
+                        if (this.stateTimer % 3 === 0) {
+                            const dirtColors = ['#78350f', '#92400e', '#a16207', '#57300a'];
+                            const dc = dirtColors[Math.floor(Math.random() * dirtColors.length)];
+                            particles.push(new Particle(
+                                pos.x + (Math.random() - 0.5) * (this.radius * 1.3),
+                                890,
+                                dc,
+                                9,
+                                Math.random() * 6 + 3,
+                                25 + Math.random() * 20,
+                                'shard'
+                            ));
+                        }
+                    } else if (this.state === 'stage3_vulnerable') {
+                        this.weight = 1.2;
+                        // On the ground or air, waiting to be picked up again
+                        if (pos.y > 830) {
+                            Matter.Body.setPosition(this.body, { x: pos.x, y: 830 });
+                            Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.7, y: 0 });
                         }
                     }
                 }
 
-                let clamped = false;
-                let cx = pos.x, cy = pos.y;
-                if (pos.x < 50) { cx = 50; clamped = true; }
-                if (pos.x > 1390) { cx = 1390; clamped = true; }
-                if (pos.y < -100) { cy = 50; clamped = true; }
-                if (pos.y > 850) { cy = 830; clamped = true; } 
-                
-                if (clamped) {
-                    Matter.Body.setPosition(this.body, { x: cx, y: cy });
-                    if (pos.y > 850) Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.8, y: -8 });
-                }
                 return; 
             }
 
@@ -2992,11 +3200,10 @@
             // ==================
             if (this.bossStage === 2) {
                 this.canBeGrabbed = false;
-                // Maintains Stage 1 spin rate (which appears slowed down by time dilation during slowmo)
-                this.angle += (this.isSloMo ? this.rotationSpeed * 0.20 : this.rotationSpeed); 
+                this.angle += (this.isSloMo ? this.rotationSpeed * 0.45 : this.rotationSpeed); 
                 this.stateTimer++;
                 
-                // Keep the boss in the upper center with a smooth side-to-side hovering sway
+                // Side-to-side hovering sway in upper center
                 const swayOffset = Math.sin(this.stateTimer * 0.035) * 160;
                 const targetX = 720 + swayOffset;
                 const targetY = 230 + Math.cos(this.stateTimer * 0.04) * 25;
@@ -3010,31 +3217,35 @@
                         this.stateTimer = 0;
                     }
                 } else if (this.state === 'stage2_summon') {
-                    if (this.stateTimer === 30) { 
-                        // Exactly 10 spikes per wave
+                    if (this.stateTimer === 1) { 
                         for(let i = 0; i < 10; i++) {
                             const ang = (i / 10) * Math.PI * 2;
-                            const sx = pos.x + Math.cos(ang) * 125;
-                            const sy = pos.y + Math.sin(ang) * 125;
+                            const sx = pos.x + Math.cos(ang) * 95;
+                            const sy = pos.y + Math.sin(ang) * 95;
                             const spike = new BossSpike(sx, sy, ang);
                             this.activeSpikes.push(spike);
                         }
+                        SoundFX.playExplosion(0.5);
+                    }
+
+                    // Let spikes travel outward ~22 frames before engaging time warp
+                    if (this.stateTimer >= 22) {
                         this.state = 'stage2_timewarp';
                         this.stateTimer = 0;
-                        SoundFX.playExplosion(0.5);
-                        this.isSloMo = true; 
+                        this.isSloMo = true;
+                        this.activeSpikes.forEach(s => {
+                            if (s.state === 'burst') s.state = 'slowmo';
+                        });
                     }
                 } else if (this.state === 'stage2_timewarp') {
-                    // Check if all active unreturned spikes have been psychically returned or destroyed
                     const unreturnedSpikesLeft = this.activeSpikes.some(s => !s.isDying && !s.playerOwned);
 
                     // 5-second slow-motion duration (300 frames) or instant completion if all spikes are returned
                     if (this.stateTimer > 300 || !unreturnedSpikesLeft) { 
                         this.state = 'stage2_release';
                         this.stateTimer = 0;
-                        this.isSloMo = false; // Time returns to normal
+                        this.isSloMo = false; 
                         
-                        // All spikes resume normal speed in their travel direction
                         this.activeSpikes.forEach(s => {
                             if (!s.isDying) {
                                 s.state = 'release';
@@ -3126,11 +3337,10 @@
             if (this.flailEntity && !this.flailEntity.isDying) {
                 const fb = this.flailEntity.body;
 
-                // Handle flail grabbability based on rebound cooldown
                 if (this.flailReboundTimer > 0) {
                     this.flailReboundTimer--;
-                    this.flailEntity.canBeGrabbed = false;
-                } else {
+                    if (this.flailEntity) this.flailEntity.canBeGrabbed = false;
+                } else if (this.flailEntity) {
                     this.flailEntity.canBeGrabbed = true;
                 }
 
@@ -3156,9 +3366,17 @@
                     }
                 }
 
+                // Tamed velocity cap on flail to prevent slingshots
+                const flailSpeed = Math.hypot(fb.velocity.x, fb.velocity.y);
+                if (flailSpeed > 16.0) {
+                    Body.setVelocity(fb, {
+                        x: (fb.velocity.x / flailSpeed) * 16.0,
+                        y: (fb.velocity.y / flailSpeed) * 16.0
+                    });
+                }
+
                 const distToCore = Math.hypot(fb.position.x - pos.x, fb.position.y - pos.y);
                 if (distToCore < this.radius + 58) {
-                    const flailSpeed = Math.hypot(fb.velocity.x, fb.velocity.y);
                     if (flailSpeed > 3.5 || isHeld) {
                         this.takeDamage(1, fb);
                         const bounceAngle = Math.atan2(fb.position.y - pos.y, fb.position.x - pos.x);
@@ -3166,11 +3384,10 @@
                             x: Math.cos(bounceAngle) * 26,
                             y: Math.sin(bounceAngle) * 26
                         });
-                        // Drop grip if currently held and start rebound cooldown
                         if (isHeld && player) {
                             player.releaseGrip(false);
                         }
-                        this.flailReboundTimer = 45; // Cannot be grabbed until bouncing back fully
+                        this.flailReboundTimer = 45; 
                         this.flailEntity.canBeGrabbed = false;
                     }
                 }
@@ -3239,9 +3456,14 @@
             ctx.save();
             ctx.translate(pos.x, pos.y);
 
-            if (this.bossStage === 3) {
-                ctx.shadowColor = '#ef4444';
-                ctx.shadowBlur = 30 + Math.sin(Date.now() / 50) * 15;
+            const isStuckPanic = (this.bossStage === 3 && (this.state === 'stage3_stuck' || this.state === 'stage3_vulnerable' || (player && player.grabbedEntity === this))) ||
+                                 this.state === 'transition_1_to_2' ||
+                                 this.state === 'transition_2_to_3';
+
+            // Consistent fiery aura in Stage 3 or Stage 2 -> 3 transition
+            if (this.bossStage === 3 || this.state === 'transition_2_to_3') {
+                ctx.shadowColor = '#f97316';
+                ctx.shadowBlur = 32 + Math.sin(Date.now() / 60) * 14;
             }
 
             if (this.state === 'windup' || this.state === 'stage3_pause') {
@@ -3250,6 +3472,13 @@
                 ctx.arc(0, 0, this.radius + 35, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            }
+
+            // Visible frantic trembling when stuck in the ground or in pained transitions
+            if (isStuckPanic) {
+                const struggleShakeX = Math.sin(Date.now() / 20) * 7;
+                const struggleShakeY = (Math.random() - 0.5) * 5;
+                ctx.translate(struggleShakeX, struggleShakeY);
             }
 
             const spikeCount = 14;
@@ -3275,37 +3504,138 @@
             ctx.fill();
             ctx.stroke();
 
-            ctx.fillStyle = '#ef4444';
-            ctx.shadowColor = '#ef4444';
-            ctx.shadowBlur = 18;
+            if (isStuckPanic) {
+                // Sad / inverted red eyes and upside-down jagged maw, keeping iconic look
+                ctx.save();
+                
+                // Trembling sorrowful/frantic eye slants (inverted angle \ /)
+                const eyeTremble = (Math.random() - 0.5) * 2;
+                ctx.fillStyle = '#ef4444';
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 18;
 
-            ctx.beginPath();
-            ctx.moveTo(-44, -24); ctx.lineTo(-16, -14); ctx.lineTo(-38, -2);
-            ctx.closePath(); ctx.fill();
+                // Left Eye (angled down towards center: sad/worried)
+                ctx.beginPath();
+                ctx.moveTo(-44, -10 + eyeTremble); 
+                ctx.lineTo(-16, -24 + eyeTremble); 
+                ctx.lineTo(-36, -30 + eyeTremble);
+                ctx.closePath(); 
+                ctx.fill();
 
-            ctx.beginPath();
-            ctx.moveTo(44, -24); ctx.lineTo(16, -14); ctx.lineTo(38, -2);
-            ctx.closePath(); ctx.fill();
+                // Right Eye (angled down towards center: sad/worried)
+                ctx.beginPath();
+                ctx.moveTo(44, -10 + eyeTremble); 
+                ctx.lineTo(16, -24 + eyeTremble); 
+                ctx.lineTo(36, -30 + eyeTremble);
+                ctx.closePath(); 
+                ctx.fill();
 
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(-30, -16, 5, 5);
-            ctx.fillRect(25, -16, 5, 5);
-            ctx.shadowBlur = 0;
+                // White eye gleam specs
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(-28, -22, 5, 5);
+                ctx.fillRect(23, -22, 5, 5);
+                ctx.shadowBlur = 0;
 
-            ctx.fillStyle = '#b91c1c';
-            ctx.beginPath();
-            ctx.arc(0, 22, 36, 0.1, Math.PI - 0.1);
-            ctx.closePath();
-            ctx.fill();
+                // Upside-down sad red mouth with chattering fangs
+                const chatter = Math.sin(Date.now() / 25) * 2;
+                ctx.fillStyle = '#b91c1c';
+                ctx.beginPath();
+                // Flipped arc: curving downward like an inverted frown
+                ctx.arc(0, 36 + chatter, 36, Math.PI + 0.1, -0.1, false);
+                ctx.closePath();
+                ctx.fill();
 
-            ctx.fillStyle = '#f8fafc';
-            ctx.beginPath();
-            for (let t = -28; t <= 28; t += 14) {
-                ctx.moveTo(t, 22); ctx.lineTo(t + 6, 35); ctx.lineTo(t + 12, 22);
+                // Inverted jagged teeth
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                for (let t = -28; t <= 28; t += 14) {
+                    ctx.moveTo(t, 36 + chatter); 
+                    ctx.lineTo(t + 6, 23 + chatter); 
+                    ctx.lineTo(t + 12, 36 + chatter);
+                }
+                ctx.fill();
+
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#ef4444';
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 18;
+
+                ctx.beginPath();
+                ctx.moveTo(-44, -24); ctx.lineTo(-16, -14); ctx.lineTo(-38, -2);
+                ctx.closePath(); ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(44, -24); ctx.lineTo(16, -14); ctx.lineTo(38, -2);
+                ctx.closePath(); ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(-30, -16, 5, 5);
+                ctx.fillRect(25, -16, 5, 5);
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#b91c1c';
+                ctx.beginPath();
+                ctx.arc(0, 22, 36, 0.1, Math.PI - 0.1);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                for (let t = -28; t <= 28; t += 14) {
+                    ctx.moveTo(t, 22); ctx.lineTo(t + 6, 35); ctx.lineTo(t + 12, 22);
+                }
+                ctx.fill();
             }
-            ctx.fill();
 
             ctx.restore();
+
+            // Moving flashing danger warning reticle during targeted dive preparation
+            if (this.bossStage === 3 && this.state === 'stage3_pause' && this.targetLandingX) {
+                ctx.save();
+                const tx = this.targetLandingX;
+                const ty = 890;
+                const isFlash = Math.floor(this.stateTimer / 5) % 2 === 0;
+
+                // Pulsing targeting line from boss to ground target
+                ctx.strokeStyle = isFlash ? 'rgba(239, 68, 68, 0.85)' : 'rgba(239, 68, 68, 0.3)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([12, 8]);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(tx, ty);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Flashing ground impact warning zone
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 24;
+                ctx.strokeStyle = isFlash ? '#f87171' : '#dc2626';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.ellipse(tx, ty, 80, 22, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.fillStyle = isFlash ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.15)';
+                ctx.fill();
+
+                // Crosshairs
+                ctx.beginPath();
+                ctx.moveTo(tx - 35, ty);
+                ctx.lineTo(tx + 35, ty);
+                ctx.moveTo(tx, ty - 18);
+                ctx.lineTo(tx, ty + 18);
+                ctx.stroke();
+
+                // "DANGER" warning text floating above impact zone
+                ctx.font = '900 16px Inter';
+                ctx.fillStyle = isFlash ? '#fef08a' : '#ef4444';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚠ SLAM ZONE ⚠', tx, ty - 32);
+
+                ctx.restore();
+            }
+
             this.drawHpBar(ctx, this.radius + 26);
         }
 
@@ -3327,7 +3657,6 @@
             ctx.shadowColor = 'rgba(0,0,0,0.85)';
             ctx.shadowBlur = 8;
             
-            // Clean title without declaring the stage
             ctx.fillText("IRON JUGGERNAUT", pos.x, y - 10);
 
             ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
@@ -3805,7 +4134,6 @@
             togglePause();
         }
         
-        // Skip wave immediately with 'n' or 'N'
         if (e.key.toLowerCase() === 'n') {
             skipWave();
         }
@@ -4246,18 +4574,41 @@
             return;
         }
 
-        // STAGE 3 BOSS GROUND SLAMS (Damage Boss strictly when slammed into static environment)
-        if (entA && entA.type === 'spike_boss' && entA.bossStage === 3 && entA.state === 'stage3_stuck') {
-            if (bodyB.isStatic && bodyA.isThrown && relVel > 5.0) {
-                entA.hitCooldown = 0;
-                entA.takeDamage(1, bodyB);
+        // STAGE 3 BOSS GROUND SLAMS: Requires heavy slam velocity (relVel >= 18.0)
+        const HEAVY_SLAM_THRESHOLD = 18.0;
+        const processBossSlam = (bossEntity, otherBody) => {
+            bossEntity.hitCooldown = 0;
+            bossEntity.slamCount = (bossEntity.slamCount || 0) + 1;
+            bossEntity.takeDamage(1, otherBody);
+            shakeAmount = Math.max(shakeAmount, 36);
+
+            // FORCE DROP AFTER EACH SLAM: release psychic grip immediately
+            if (player && player.grabbedEntity === bossEntity) {
+                player.releaseGrip(false);
+            }
+            bossEntity.body.isThrown = false;
+            Matter.Body.setVelocity(bossEntity.body, { x: bossEntity.body.velocity.x * 0.2, y: -4 });
+
+            // Check if 3 slams reached -> BREAK OUT IMMEDIATELY
+            if (bossEntity.slamCount >= 3) {
+                bossEntity.triggerBreakout();
+            } else {
+                // Must be picked up again: small cooldown before next grab
+                bossEntity.state = 'stage3_vulnerable';
+                bossEntity.regrabCooldown = 25;
+                bossEntity.canBeGrabbed = false;
+            }
+        };
+
+        if (entA && entA.type === 'spike_boss' && entA.bossStage === 3 && (entA.state === 'stage3_stuck' || entA.state === 'stage3_vulnerable')) {
+            if (bodyB.isStatic && (bodyA.isThrown || relVel >= HEAVY_SLAM_THRESHOLD)) {
+                processBossSlam(entA, bodyB);
                 return;
             }
         }
-        if (entB && entB.type === 'spike_boss' && entB.bossStage === 3 && entB.state === 'stage3_stuck') {
-            if (bodyA.isStatic && bodyB.isThrown && relVel > 5.0) {
-                entB.hitCooldown = 0;
-                entB.takeDamage(1, bodyA);
+        if (entB && entB.type === 'spike_boss' && entB.bossStage === 3 && (entB.state === 'stage3_stuck' || entB.state === 'stage3_vulnerable')) {
+            if (bodyA.isStatic && (bodyB.isThrown || relVel >= HEAVY_SLAM_THRESHOLD)) {
+                processBossSlam(entB, bodyA);
                 return;
             }
         }
@@ -4560,13 +4911,12 @@
                 }
             }
 
-            // TRUE SLOW MOTION: Slow down the physics engine integration to 20% speed
-            const timeScale = isTimeWarpActive ? 0.20 : 1.0;
+            // Tuned slow motion timescale (0.45x) for a snappier, dynamic feel
+            const timeScale = isTimeWarpActive ? 0.45 : 1.0;
             Engine.update(engine, (1000 / 60) * timeScale);
 
-            // Steve is immune to the time-warp: we update player separately if time is dilated
+            // Steve remains completely immune to time dilation
             if (isTimeWarpActive && player && !player.isDying) {
-                // Compensate player movement velocity so Steve moves at full normal speed
                 player.update();
             }
 
@@ -4582,7 +4932,6 @@
                     }
 
                     if (!e.isDying) {
-                        // Skip updating player twice in time-warp
                         if (!(isTimeWarpActive && e === player)) {
                             e.update();
                         }
@@ -4604,16 +4953,16 @@
                 if (livingEnemiesCount === 0 && !isWavePendingSpawn) {
                     waveTimer++;
                     if (waveTimer === 1) {
-                        if (wave % 3 === 0) {
+                        if (wave % 3 === 0 && wave !== 15) {
                             const heartX = 720 + (Math.random() - 0.5) * 160;
                             new HealingHeart(heartX, 360);
-                        }
-                        if (wave === 15) {
-                            restoreBrokenPlatforms();
                         }
                     }
                     if (waveTimer > 90) {
                         wave++;
+                        if (wave === 16) {
+                            restoreBrokenPlatforms();
+                        }
                         prepareWave();
                     }
                 } else if (livingEnemiesCount > 0) {
@@ -4658,7 +5007,7 @@
             }
         }
 
-        // Draw Ultra-Cool Layered Slow-Motion Psychic Aura around every surrounding object/entity
+        // Draw layered psychic halos around all surrounding objects during Time Warp
         if (isTimeWarp && player && !player.isDying) {
             ctx.save();
             const now = Date.now();
@@ -4672,11 +5021,9 @@
                 ctx.save();
                 ctx.translate(epos.x, epos.y);
 
-                // Deep glowing chromatic backdrop
                 ctx.shadowColor = '#a855f7';
                 ctx.shadowBlur = 24 + Math.sin(t * 1.5) * 8;
 
-                // Outer pulsing psychic halo
                 const pulseR1 = r + 10 + Math.sin(t * 2) * 5;
                 ctx.strokeStyle = 'rgba(168, 85, 247, 0.6)';
                 ctx.lineWidth = 2.5;
@@ -4684,7 +5031,6 @@
                 ctx.arc(0, 0, pulseR1, 0, Math.PI * 2);
                 ctx.stroke();
 
-                // Inner rotating psychic runes/orbit points
                 ctx.strokeStyle = 'rgba(216, 180, 254, 0.4)';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
@@ -4728,7 +5074,7 @@
             particles[i].draw(ctx);
         }
 
-        // Stage 2 Time Warp: Pure wavy border lines with glowing purple light
+        // Animated wavy purple perimeter borders
         if (isTimeWarp && player && !player.isDying) {
             ctx.save();
             const now = Date.now();
@@ -4744,7 +5090,7 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            // Top wavy border
+            // Top
             ctx.beginPath();
             for (let x = borderInset; x <= w - borderInset; x += 15) {
                 const waveY = borderInset + Math.sin(x * 0.02 + waveTime) * 9;
@@ -4753,7 +5099,7 @@
             }
             ctx.stroke();
 
-            // Bottom wavy border
+            // Bottom
             ctx.beginPath();
             for (let x = borderInset; x <= w - borderInset; x += 15) {
                 const waveY = (h - borderInset) + Math.sin(x * 0.02 + waveTime + 1.5) * 9;
@@ -4762,7 +5108,7 @@
             }
             ctx.stroke();
 
-            // Left wavy border
+            // Left
             ctx.beginPath();
             for (let y = borderInset; y <= h - borderInset; y += 15) {
                 const waveX = borderInset + Math.cos(y * 0.02 + waveTime) * 9;
@@ -4771,7 +5117,7 @@
             }
             ctx.stroke();
 
-            // Right wavy border
+            // Right
             ctx.beginPath();
             for (let y = borderInset; y <= h - borderInset; y += 15) {
                 const waveX = (w - borderInset) + Math.cos(y * 0.02 + waveTime + 1.5) * 9;
@@ -4780,7 +5126,7 @@
             }
             ctx.stroke();
 
-            // Secondary subtle outer glow wave
+            // Outer glow wave
             ctx.strokeStyle = 'rgba(217, 70, 239, 0.45)';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
