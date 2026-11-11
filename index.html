@@ -4472,6 +4472,49 @@
         draw(ctx) {
             const pos = this.body.position;
 
+            if (this.flailEntity && !this.flailEntity.isDying) {
+                const fpos = this.flailEntity.body.position;
+                const linkCount = 10;
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(fpos.x, fpos.y);
+                ctx.stroke();
+
+                for (let i = 1; i < linkCount; i++) {
+                    const lx = pos.x + (fpos.x - pos.x) * (i / linkCount);
+                    const ly = pos.y + (fpos.y - pos.y) * (i / linkCount);
+                    ctx.fillStyle = '#64748b';
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.save();
+                ctx.translate(fpos.x, fpos.y);
+                const spikeCountFlail = 8;
+                const flailDrawRad = 58;
+                for (let i = 0; i < spikeCountFlail; i++) {
+                    const ang = (i / spikeCountFlail) * Math.PI * 2 + this.angle * 2.5;
+                    ctx.fillStyle = '#334155';
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(ang - 0.25) * (flailDrawRad * 0.85), Math.sin(ang - 0.25) * (flailDrawRad * 0.85));
+                    ctx.lineTo(Math.cos(ang) * (flailDrawRad * 1.45), Math.sin(ang) * (flailDrawRad * 1.45));
+                    ctx.lineTo(Math.cos(ang + 0.25) * (flailDrawRad * 0.85), Math.sin(ang + 0.25) * (flailDrawRad * 0.85));
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(0, 0, flailDrawRad, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
             ctx.save();
             ctx.translate(pos.x, pos.y);
 
