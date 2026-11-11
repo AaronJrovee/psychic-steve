@@ -72,13 +72,35 @@
             position: absolute;
             inset: 0;
             background: rgba(10, 15, 29, 0.72);
-            backdrop-filter: blur(6px);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             pointer-events: auto;
             z-index: 50;
+        }
+        .customizer-opt-btn {
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            background: rgba(30, 41, 59, 0.85);
+            border: 1.5px solid #475569;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .customizer-opt-btn:hover {
+            border-color: #c084fc;
+            background: rgba(51, 65, 85, 0.95);
+            color: #ffffff;
+        }
+        .customizer-opt-btn.active {
+            border-color: #f0abfc;
+            background: linear-gradient(135deg, #9333ea, #c026d3);
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(192, 38, 211, 0.55);
+            transform: scale(1.05);
         }
         @keyframes pulseGlow {
             0%, 100% {
@@ -141,6 +163,29 @@
         <div id="ui-layer">
             <!-- Title Screen -->
             <div id="title-screen">
+                <!-- Circular Clothing Rack Button in Top-Right -->
+                <div style="position: absolute; top: 22px; right: 26px; z-index: 55;">
+                    <button id="btn-open-customizer" onclick="toggleCustomizer(true)" class="w-14 h-14 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md" title="Customize Appearance">
+                        <!-- Custom vector icon of a clothing rack / clothes rail -->
+                        <svg class="w-7 h-7 text-purple-200 hover:text-white transition-colors drop-shadow-[0_0_6px_rgba(192,132,252,0.8)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Top rail bar with end stoppers -->
+                            <line x1="3" y1="5" x2="21" y2="5" />
+                            <circle cx="3" cy="5" r="1.2" fill="currentColor" />
+                            <circle cx="21" cy="5" r="1.2" fill="currentColor" />
+                            <!-- Vertical support posts -->
+                            <line x1="5.5" y1="5" x2="5.5" y2="19" />
+                            <line x1="18.5" y1="5" x2="18.5" y2="19" />
+                            <!-- Lower rack shelf / spreader bar -->
+                            <line x1="5.5" y1="16.5" x2="18.5" y2="16.5" />
+                            <!-- Base feet -->
+                            <line x1="2.5" y1="20" x2="8.5" y2="20" />
+                            <line x1="15.5" y1="20" x2="21.5" y2="20" />
+                            <!-- Hanging hanger icon on the rack -->
+                            <path d="M12 5 v1.5 a1.5 1.5 0 0 1 -1.5 1.5 l-3 3.5 h9 l-3 -3.5 a1.5 1.5 0 0 1 -1.5 -1.5" stroke-width="1.6" />
+                        </svg>
+                    </button>
+                </div>
+
                 <h1 class="text-7xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-3">PSYCHIC STEVE</h1>
                 <p class="text-lg text-purple-200 mb-1 font-medium">A / D or Arrows to Move • W or Up to Jump</p>
                 <p class="text-xs text-purple-300 mb-4 tracking-wide">HOLD Left Mouse to channel psychic waves • Release to throw • Press [N] to Skip Wave</p>
@@ -153,6 +198,66 @@
             </div>
 
             <button class="play-btn" onclick="startGame()">PLAY</button>
+        </div>
+
+        <!-- Appearance Customization Pop-Up Modal -->
+        <div id="customizer-modal" class="message-box !max-w-3xl !w-[92%] !p-6 !py-5" style="z-index: 70;">
+            <div class="flex items-center justify-between border-b border-purple-500/40 pb-3 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-purple-600/50 border border-purple-400/80 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-purple-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="3" y1="5" x2="21" y2="5" />
+                            <line x1="5.5" y1="5" x2="5.5" y2="19" />
+                            <line x1="18.5" y1="5" x2="18.5" y2="19" />
+                            <line x1="5.5" y1="16.5" x2="18.5" y2="16.5" />
+                            <line x1="2.5" y1="20" x2="8.5" y2="20" />
+                            <line x1="15.5" y1="20" x2="21.5" y2="20" />
+                            <path d="M12 5 v1.5 a1.5 1.5 0 0 1 -1.5 1.5 l-3 3.5 h9 l-3 -3.5 a1.5 1.5 0 0 1 -1.5 -1.5" stroke-width="1.6" />
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-black text-purple-300 tracking-wider">APPEARANCE CUSTOMIZATION</h2>
+                </div>
+                <button onclick="toggleCustomizer(false)" class="text-slate-400 hover:text-white text-2xl font-black px-2 py-0.5 rounded-lg hover:bg-slate-800 transition-colors" title="Close">&times;</button>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-5 items-center">
+                <!-- Live Preview Canvas -->
+                <div class="flex flex-col items-center justify-center bg-slate-950/80 p-3 rounded-2xl border-2 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+                    <canvas id="customizer-preview-canvas" width="220" height="230" class="rounded-xl bg-gradient-to-b from-sky-400 via-sky-200 to-emerald-400"></canvas>
+                    <span class="text-xs font-semibold text-purple-200 tracking-widest mt-2 uppercase">Live Preview</span>
+                </div>
+
+                <!-- Customization Pickers Grid -->
+                <div class="flex-1 w-full space-y-3 text-left">
+                    <!-- Headgear -->
+                    <div>
+                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Headgear</span>
+                        <div class="flex flex-wrap gap-1.5" id="opt-headgear-container"></div>
+                    </div>
+
+                    <!-- Facial Expression -->
+                    <div>
+                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Facial Expression</span>
+                        <div class="flex flex-wrap gap-1.5" id="opt-expression-container"></div>
+                    </div>
+
+                    <!-- Psychic Ray Color -->
+                    <div>
+                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Psychic Ray Color</span>
+                        <div class="flex flex-wrap gap-1.5" id="opt-raycolor-container"></div>
+                    </div>
+
+                    <!-- Movement Trail -->
+                    <div>
+                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Player Particle Trail</span>
+                        <div class="flex flex-wrap gap-1.5" id="opt-trail-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-purple-500/30 flex justify-end">
+                <button onclick="toggleCustomizer(false)" class="restart-btn !mt-0 !text-sm !px-7 !py-2">Done</button>
+            </div>
         </div>
 
         <!-- Pause Screen -->
@@ -676,6 +781,612 @@
     let breakablePlatforms = [];
     let shakeAmount = 0;
     let livingEnemiesCount = 0;
+
+    // --- APPEARANCE CUSTOMIZATION STATE ---
+    const steveAppearance = {
+        headgear: 'none',          // 'none', 'cloak', 'headband', 'wizard', 'crown', 'viking', 'halo'
+        expression: 'normal',      // 'normal', 'determined', 'angry', 'scared', 'cool', 'smug', 'derp'
+        rayColor: 'purple',        // 'purple', 'cyan', 'emerald', 'crimson', 'gold', 'neon_pink'
+        particleTrail: 'none'      // Default disabled
+    };
+
+    const RAY_COLOR_PRESETS = {
+        purple:    { beam: '#a020f0', glow: '#d946ef', box: '#f0abfc', light: 'rgba(160, 32, 240, 0.7)' },
+        cyan:      { beam: '#06b6d4', glow: '#38bdf8', box: '#a5f3fc', light: 'rgba(6, 182, 212, 0.7)' },
+        emerald:   { beam: '#10b981', glow: '#34d399', box: '#a7f3d0', light: 'rgba(16, 185, 129, 0.7)' },
+        crimson:   { beam: '#ef4444', glow: '#f87171', box: '#fecaca', light: 'rgba(239, 68, 68, 0.7)' },
+        gold:      { beam: '#f59e0b', glow: '#fbbf24', box: '#fef08a', light: 'rgba(245, 158, 11, 0.7)' },
+        neon_pink: { beam: '#ec4899', glow: '#f472b6', box: '#fbcfe8', light: 'rgba(236, 72, 153, 0.7)' }
+    };
+
+    const CUSTOMIZER_OPTIONS = {
+        headgear: [
+            { id: 'none', label: 'None' },
+            { id: 'cloak', label: 'Cloak' },
+            { id: 'headband', label: 'Red Headband' },
+            { id: 'wizard', label: 'Wizard Hat' },
+            { id: 'crown', label: 'Golden Crown' },
+            { id: 'viking', label: 'Viking Helmet' },
+            { id: 'halo', label: 'Angel Halo' }
+        ],
+        expression: [
+            { id: 'normal', label: 'Classic' },
+            { id: 'scared', label: 'Scared' },
+            { id: 'determined', label: 'Determined' },
+            { id: 'angry', label: 'Fierce' },
+            { id: 'cool', label: 'Shades' },
+            { id: 'smug', label: 'Smug' },
+            { id: 'derp', label: 'Playful' }
+        ],
+        rayColor: [
+            { id: 'purple', label: 'Purple' },
+            { id: 'cyan', label: 'Cyan' },
+            { id: 'emerald', label: 'Emerald' },
+            { id: 'crimson', label: 'Crimson' },
+            { id: 'gold', label: 'Gold' },
+            { id: 'neon_pink', label: 'Neon Pink' }
+        ],
+        particleTrail: [
+            { id: 'none', label: 'Disabled' },
+            { id: 'sparkles', label: 'Sparkles' },
+            { id: 'psychic_glow', label: 'Psychic Aura' },
+            { id: 'flame', label: 'Fiery Embers' },
+            { id: 'bubbles', label: 'Bubbles' }
+        ]
+    };
+
+    let customizerAnimFrame = null;
+    let customizerPreviewTime = 0;
+    const customizerPreviewParticles = [];
+
+    function toggleCustomizer(show) {
+        const modal = document.getElementById('customizer-modal');
+        if (!modal) return;
+        modal.style.display = show ? 'block' : 'none';
+        if (show) {
+            SoundFX.init();
+            renderCustomizerButtons();
+            if (!customizerAnimFrame) {
+                customizerAnimLoop();
+            }
+        } else {
+            if (customizerAnimFrame) {
+                cancelAnimationFrame(customizerAnimFrame);
+                customizerAnimFrame = null;
+            }
+        }
+    }
+
+    function setAppearance(category, value) {
+        steveAppearance[category] = value;
+        renderCustomizerButtons();
+    }
+
+    function renderCustomizerButtons() {
+        const categories = ['headgear', 'expression', 'rayColor', 'particleTrail'];
+        const containerMap = {
+            headgear: 'opt-headgear-container',
+            expression: 'opt-expression-container',
+            rayColor: 'opt-raycolor-container',
+            particleTrail: 'opt-trail-container'
+        };
+
+        categories.forEach(cat => {
+            const container = document.getElementById(containerMap[cat]);
+            if (!container) return;
+            container.innerHTML = '';
+            CUSTOMIZER_OPTIONS[cat].forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'customizer-opt-btn' + (steveAppearance[cat] === opt.id ? ' active' : '');
+                btn.textContent = opt.label;
+                btn.onclick = () => setAppearance(cat, opt.id);
+                container.appendChild(btn);
+            });
+        });
+    }
+
+    // --- REUSABLE STEVE FACE & HEADGEAR DRAW FUNCTIONS ---
+    function drawSteveFace(ctx, expr, eyeLookX, eyeLookY) {
+        ctx.save();
+        if (expr === 'scared') {
+            // Wide trembling frightened eyebrows
+            const shiver = Math.sin(Date.now() / 25) * 1.2;
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(-11, -52 + shiver);
+            ctx.quadraticCurveTo(-6, -56 + shiver, -2, -50 + shiver);
+            ctx.moveTo(11, -52 - shiver);
+            ctx.quadraticCurveTo(6, -56 - shiver, 2, -50 - shiver);
+            ctx.stroke();
+
+            // Wide frightened whites with tiny trembling pupils
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.arc(-6, -45, 5, 0, Math.PI * 2);
+            ctx.arc(6, -45, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Small panicked pupils darting around
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-6 + eyeLookX * 0.5 + shiver * 0.6, -45 + eyeLookY * 0.5, 1.8, 0, Math.PI * 2);
+            ctx.arc(6 + eyeLookX * 0.5 + shiver * 0.6, -45 + eyeLookY * 0.5, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Panicked open trembling mouth
+            ctx.fillStyle = '#7f1d1d';
+            ctx.beginPath();
+            ctx.ellipse(0, -35, 4.5, 5.5 + Math.abs(shiver), 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Cold sweat bead dripping down forehead
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(13, -48, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (expr === 'cool') {
+            // Dark sunglasses
+            ctx.fillStyle = '#0f172a';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(-12, -50, 10, 8, 2);
+            ctx.roundRect(2, -50, 10, 8, 2);
+            ctx.fill();
+            ctx.stroke();
+            // Sunglasses bridge
+            ctx.beginPath();
+            ctx.moveTo(-2, -47);
+            ctx.lineTo(2, -47);
+            ctx.stroke();
+            // Reflection gleams on glasses
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(-10, -48);
+            ctx.lineTo(-5, -44);
+            ctx.moveTo(4, -48);
+            ctx.lineTo(9, -44);
+            ctx.stroke();
+            // Confident smirk
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.arc(2, -36, 4, 0.1, Math.PI * 0.85);
+            ctx.stroke();
+        } else if (expr === 'angry') {
+            // Fierce angled eyebrows
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(-10, -50);
+            ctx.lineTo(-2, -46);
+            ctx.moveTo(10, -50);
+            ctx.lineTo(2, -46);
+            ctx.stroke();
+            // Eyes
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-6 + eyeLookX, -45 + eyeLookY, 2.6, 0, Math.PI * 2);
+            ctx.arc(6 + eyeLookX, -45 + eyeLookY, 2.6, 0, Math.PI * 2);
+            ctx.fill();
+            // Gritted teeth
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(-6, -37, 12, 4, 1);
+            ctx.fill();
+            ctx.stroke();
+        } else if (expr === 'determined') {
+            // Intense eyes
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-9, -49);
+            ctx.lineTo(-3, -47);
+            ctx.moveTo(9, -49);
+            ctx.lineTo(3, -47);
+            ctx.stroke();
+            // Eyes
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-6 + eyeLookX, -45 + eyeLookY, 2.8, 0, Math.PI * 2);
+            ctx.arc(6 + eyeLookX, -45 + eyeLookY, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+            // Firm straight mouth
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-5, -36);
+            ctx.lineTo(5, -36);
+            ctx.stroke();
+        } else if (expr === 'smug') {
+            // One eye open, one wink
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-6 + eyeLookX, -46 + eyeLookY, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+            // Winking right eye
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(6, -46, 3.5, Math.PI, 0);
+            ctx.stroke();
+            // Smug tilted grin
+            ctx.beginPath();
+            ctx.arc(1, -38, 6, 0.1, Math.PI * 0.7);
+            ctx.stroke();
+        } else if (expr === 'derp') {
+            // Googly mismatched eyes
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-7, -48, 3.4, 0, Math.PI * 2);
+            ctx.arc(7, -44, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Tongue sticking out
+            ctx.fillStyle = '#f43f5e';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.arc(0, -35, 3.5, 0, Math.PI);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            // Classic two pupils
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-6 + eyeLookX, -46 + eyeLookY, 2.8, 0, Math.PI * 2);
+            ctx.arc(6 + eyeLookX, -46 + eyeLookY, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function drawSteveHeadgear(ctx, headgear) {
+        ctx.save();
+        if (headgear === 'cloak') {
+            // Dark mystical cowl & draped hooded cloak
+            ctx.fillStyle = '#312e81';
+            ctx.strokeStyle = '#1e1b4b';
+            ctx.lineWidth = 2.4;
+
+            // Hooded cowl arch over head
+            ctx.beginPath();
+            ctx.moveTo(-21, -36);
+            ctx.quadraticCurveTo(-24, -66, 0, -68);
+            ctx.quadraticCurveTo(24, -66, 21, -36);
+            ctx.quadraticCurveTo(26, -58, 20, -70);
+            ctx.quadraticCurveTo(0, -75, -20, -70);
+            ctx.quadraticCurveTo(-26, -58, -21, -36);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Pointed hood peak at the back
+            ctx.beginPath();
+            ctx.moveTo(-10, -67);
+            ctx.quadraticCurveTo(-18, -75, -28, -69);
+            ctx.quadraticCurveTo(-16, -63, 0, -68);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Shoulder capelet mantle
+            ctx.fillStyle = '#4338ca';
+            ctx.beginPath();
+            ctx.moveTo(-16, -26);
+            ctx.lineTo(-26, 6);
+            ctx.lineTo(-14, 2);
+            ctx.lineTo(0, -18);
+            ctx.lineTo(14, 2);
+            ctx.lineTo(26, 6);
+            ctx.lineTo(16, -26);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Golden clasp brooch
+            ctx.fillStyle = '#facc15';
+            ctx.strokeStyle = '#ca8a04';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, -22, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        } else if (headgear === 'headband') {
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(-18, -52, 36, 6);
+            // Headband knot & tails
+            ctx.beginPath();
+            ctx.moveTo(-18, -49);
+            ctx.lineTo(-27, -42);
+            ctx.lineTo(-24, -36);
+            ctx.lineTo(-17, -46);
+            ctx.closePath();
+            ctx.fill();
+        } else if (headgear === 'wizard') {
+            // Pointy Wizard Hat
+            ctx.fillStyle = '#6366f1';
+            ctx.strokeStyle = '#312e81';
+            ctx.lineWidth = 2;
+            // Brim
+            ctx.beginPath();
+            ctx.ellipse(0, -56, 26, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Cone
+            ctx.beginPath();
+            ctx.moveTo(-16, -56);
+            ctx.quadraticCurveTo(-4, -75, 14, -88);
+            ctx.quadraticCurveTo(8, -70, 16, -56);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Hat band with star
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(-12, -61, 24, 4);
+        } else if (headgear === 'crown') {
+            // Golden Crown
+            ctx.fillStyle = '#facc15';
+            ctx.strokeStyle = '#ca8a04';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-16, -56);
+            ctx.lineTo(-18, -72);
+            ctx.lineTo(-8, -64);
+            ctx.lineTo(0, -75);
+            ctx.lineTo(8, -64);
+            ctx.lineTo(18, -72);
+            ctx.lineTo(16, -56);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Jewels
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(0, -66, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(-9, -60, 2, 0, Math.PI * 2);
+            ctx.arc(9, -60, 2, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (headgear === 'viking') {
+            // Viking Iron Helmet with Horns
+            ctx.fillStyle = '#64748b';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, -52, 18, Math.PI, 0, false);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Horns
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.8;
+            // Left horn
+            ctx.beginPath();
+            ctx.moveTo(-14, -54);
+            ctx.quadraticCurveTo(-26, -62, -24, -72);
+            ctx.quadraticCurveTo(-18, -64, -10, -58);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Right horn
+            ctx.beginPath();
+            ctx.moveTo(14, -54);
+            ctx.quadraticCurveTo(26, -62, 24, -72);
+            ctx.quadraticCurveTo(18, -64, 10, -58);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        } else if (headgear === 'halo') {
+            // Angelic glowing halo
+            ctx.shadowColor = '#fef08a';
+            ctx.shadowBlur = 14;
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.ellipse(0, -70, 20, 6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // --- CONTINUOUS ANIMATION LOOP FOR APPEARANCE PREVIEW ---
+    function customizerAnimLoop() {
+        const previewCanvas = document.getElementById('customizer-preview-canvas');
+        if (!previewCanvas) return;
+        const pctx = previewCanvas.getContext('2d');
+        const pw = previewCanvas.width;
+        const ph = previewCanvas.height;
+
+        customizerPreviewTime += 0.045;
+        const t = customizerPreviewTime;
+
+        pctx.clearRect(0, 0, pw, ph);
+
+        // Ground slab with grass
+        pctx.fillStyle = '#15803d';
+        pctx.fillRect(0, ph - 32, pw, 32);
+        pctx.fillStyle = '#22c55e';
+        pctx.fillRect(0, ph - 32, pw, 6);
+
+        // Steve weaves back and forth and hovers with psychic levitation
+        const steveX = 64 + Math.sin(t * 1.2) * 18;
+        const steveY = ph - 74 + Math.cos(t * 2.2) * 9;
+        const rayCfg = RAY_COLOR_PRESETS[steveAppearance.rayColor] || RAY_COLOR_PRESETS.purple;
+
+        // Telekinetically levitating practice block
+        const targetX = pw - 48 + Math.cos(t * 1.6) * 12;
+        const targetY = 70 + Math.sin(t * 2.0) * 18;
+
+        // Spawn movement trail particles from Steve
+        if (steveAppearance.particleTrail !== 'none') {
+            const pType = steveAppearance.particleTrail;
+            let col = '#fef08a';
+            if (pType === 'psychic_glow') col = rayCfg.glow;
+            else if (pType === 'flame') col = Math.random() < 0.5 ? '#f97316' : '#ef4444';
+            else if (pType === 'bubbles') col = '#38bdf8';
+
+            customizerPreviewParticles.push({
+                x: steveX + (Math.random() - 0.5) * 14,
+                y: steveY + 22 + (Math.random() - 0.5) * 8,
+                vx: -Math.cos(t * 1.2) * 1.2 + (Math.random() - 0.5) * 0.8,
+                vy: (pType === 'flame' || pType === 'bubbles') ? -1.5 : (Math.random() - 0.5) * 1.0,
+                color: col,
+                size: Math.random() * 3.5 + 2,
+                life: 25,
+                maxLife: 25
+            });
+        }
+
+        // Update and draw preview particles
+        for (let i = customizerPreviewParticles.length - 1; i >= 0; i--) {
+            const p = customizerPreviewParticles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life--;
+            if (p.life <= 0) {
+                customizerPreviewParticles.splice(i, 1);
+                continue;
+            }
+            pctx.save();
+            pctx.globalAlpha = p.life / p.maxLife;
+            pctx.fillStyle = p.color;
+            pctx.beginPath();
+            pctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            pctx.fill();
+            pctx.restore();
+        }
+
+        // Psychic aura glowing behind Steve
+        const auraGrad = pctx.createRadialGradient(steveX, steveY - 10, 8, steveX, steveY - 10, 55);
+        auraGrad.addColorStop(0, rayCfg.glow + '55');
+        auraGrad.addColorStop(1, 'transparent');
+        pctx.fillStyle = auraGrad;
+        pctx.beginPath();
+        pctx.arc(steveX, steveY - 10, 55, 0, Math.PI * 2);
+        pctx.fill();
+
+        // Animated psychic ray shooting from Steve's hand to the floating block
+        const handX = steveX + 22;
+        const handY = steveY - 18;
+
+        pctx.save();
+        pctx.shadowColor = rayCfg.glow;
+        pctx.shadowBlur = 18;
+
+        // Multi-tendril electrical lightning beam
+        for (let w = 0; w < 3; w++) {
+            pctx.strokeStyle = w === 0 ? '#ffffff' : (w === 1 ? rayCfg.beam : rayCfg.glow);
+            pctx.lineWidth = w === 0 ? 1.8 : 3.2;
+            pctx.beginPath();
+            pctx.moveTo(handX, handY);
+
+            const jitter = (w + 1) * 8;
+            const midX = (handX + targetX) / 2 + Math.sin(t * 12 + w * 2) * jitter;
+            const midY = (handY + targetY) / 2 + Math.cos(t * 12 + w * 2) * jitter;
+
+            pctx.quadraticCurveTo(midX, midY, targetX, targetY);
+            pctx.stroke();
+        }
+
+        // Pulsing psychic target reticle around floating box
+        pctx.strokeStyle = rayCfg.box;
+        pctx.lineWidth = 2;
+        const boxPulse = (Math.sin(t * 8) + 1) * 3;
+        pctx.strokeRect(targetX - 16 - boxPulse, targetY - 16 - boxPulse, 32 + boxPulse * 2, 32 + boxPulse * 2);
+
+        // Rotating diamond
+        pctx.save();
+        pctx.translate(targetX, targetY);
+        pctx.rotate(t * 3);
+        pctx.strokeRect(-12, -12, 24, 24);
+        pctx.restore();
+
+        // Draw floating practice wooden crate
+        pctx.save();
+        pctx.translate(targetX, targetY);
+        pctx.rotate(Math.sin(t * 2) * 0.25);
+        pctx.fillStyle = '#D2B48C';
+        pctx.fillRect(-12, -12, 24, 24);
+        pctx.strokeStyle = '#8B4513';
+        pctx.lineWidth = 2.5;
+        pctx.strokeRect(-12, -12, 24, 24);
+        pctx.beginPath();
+        pctx.moveTo(-12, -12); pctx.lineTo(12, 12);
+        pctx.moveTo(12, -12); pctx.lineTo(-12, 12);
+        pctx.stroke();
+        pctx.restore();
+
+        pctx.restore();
+
+        // Draw animated Steve stick figure
+        pctx.save();
+        pctx.translate(steveX, steveY);
+        pctx.scale(0.85, 0.85);
+
+        pctx.strokeStyle = 'black';
+        pctx.lineWidth = 5;
+        pctx.lineCap = 'round';
+        pctx.lineJoin = 'round';
+
+        // Head
+        pctx.beginPath();
+        pctx.arc(0, -45, 18, 0, Math.PI * 2);
+        pctx.fillStyle = '#ffffff';
+        pctx.fill();
+        pctx.stroke();
+
+        // Eye tracking angle towards target box
+        const aimAngle = Math.atan2(targetY - (steveY - 15), targetX - steveX);
+        const lookX = Math.cos(aimAngle) * 3;
+        const lookY = Math.sin(aimAngle) * 3;
+
+        // Face & Headgear
+        drawSteveFace(pctx, steveAppearance.expression, lookX, lookY);
+        drawSteveHeadgear(pctx, steveAppearance.headgear);
+
+        // Torso
+        pctx.beginPath();
+        pctx.moveTo(0, -27);
+        pctx.lineTo(0, 22);
+        pctx.stroke();
+
+        // Left idle arm
+        pctx.beginPath();
+        pctx.moveTo(0, -15);
+        pctx.lineTo(-18, Math.sin(t * 3) * 6);
+        pctx.stroke();
+
+        // Right arm outstretched aiming psychic beam
+        pctx.beginPath();
+        pctx.moveTo(0, -15);
+        pctx.lineTo(Math.cos(aimAngle) * 32, -15 + Math.sin(aimAngle) * 32);
+        pctx.stroke();
+
+        // Legs (hovering / levitating float posture)
+        const legSway = Math.sin(t * 3) * 6;
+        pctx.beginPath();
+        pctx.moveTo(0, 22);
+        pctx.lineTo(-10 + legSway, 48);
+        pctx.moveTo(0, 22);
+        pctx.lineTo(12 - legSway, 50);
+        pctx.stroke();
+
+        pctx.restore();
+
+        // Continue preview animation loop
+        customizerAnimFrame = requestAnimationFrame(customizerAnimLoop);
+    }
 
     // Progression & XP Level Stats
     const LEVEL_REQUIREMENTS = { 1: 10, 2: 40, 3: 100, 4: 150 };
@@ -1340,18 +2051,30 @@
             if (this.invulnerableTimer > 0) this.invulnerableTimer--;
             if (this.isDying) return;
 
-            // Anti-Stall Healing Rule:
-            // Steve only passively heals if he is down near combat level (y > 520) 
-            // or actively channeling psychic abilities. Camping high up (y <= 500) passively freezes regeneration!
-            const isCampingHigh = this.body.position.y < 500 && !mouse.isDown;
-            if (!isCampingHigh) {
-                this.healTimer = (this.healTimer || 0) + 1;
-                if (this.healTimer >= 90) {
-                    this.healTimer = 0;
-                    if (this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 1);
+            // Spawn selected movement particle trail while Steve is running/jumping
+            const currentSpeed = Math.hypot(this.body.velocity.x, this.body.velocity.y);
+            if (currentSpeed > 1.8 && steveAppearance.particleTrail !== 'none') {
+                const px = this.body.position.x;
+                const py = this.body.position.y + 35;
+                const trailType = steveAppearance.particleTrail;
+                if (trailType === 'sparkles' && Math.random() < 0.65) {
+                    particles.push(new Particle(px + (Math.random() - 0.5) * 20, py, '#fef08a', 4, Math.random() * 3 + 1.5, 18));
+                } else if (trailType === 'psychic_glow' && Math.random() < 0.7) {
+                    const rc = RAY_COLOR_PRESETS[steveAppearance.rayColor] || RAY_COLOR_PRESETS.purple;
+                    particles.push(new Particle(px + (Math.random() - 0.5) * 16, py - 10, rc.glow, 3.5, Math.random() * 4 + 2, 22));
+                } else if (trailType === 'flame' && Math.random() < 0.75) {
+                    const flameColor = Math.random() < 0.5 ? '#f97316' : '#ef4444';
+                    particles.push(new Particle(px + (Math.random() - 0.5) * 18, py, flameColor, 5, Math.random() * 3.5 + 2, 16));
+                } else if (trailType === 'bubbles' && Math.random() < 0.6) {
+                    particles.push(new Particle(px + (Math.random() - 0.5) * 18, py, '#38bdf8', 3, Math.random() * 4 + 2, 26));
                 }
-            } else {
+            }
+
+            // Passive healing over time
+            this.healTimer = (this.healTimer || 0) + 1;
+            if (this.healTimer >= 90) {
                 this.healTimer = 0;
+                if (this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 1);
             }
 
             const moveSpeed = 8;
@@ -1568,6 +2291,7 @@
 
             const pos = this.body.position;
             const maxGrabRadius = 450;
+            const rayPreset = RAY_COLOR_PRESETS[steveAppearance.rayColor] || RAY_COLOR_PRESETS.purple;
 
             if (mouse.isDown) {
                 ctx.save();
@@ -1594,12 +2318,12 @@
                     }
                 }
 
-                ctx.shadowColor = '#d946ef';
+                ctx.shadowColor = rayPreset.glow;
                 ctx.shadowBlur = isConnected ? 24 : 14;
 
                 const beamCount = isConnected ? 4 : 3;
                 for (let w = 0; w < beamCount; w++) {
-                    ctx.strokeStyle = w === 0 ? 'rgba(255, 255, 255, 0.9)' : (isConnected ? '#a020f0' : 'rgba(160, 32, 240, 0.7)');
+                    ctx.strokeStyle = w === 0 ? 'rgba(255, 255, 255, 0.9)' : (isConnected ? rayPreset.beam : rayPreset.light);
                     ctx.lineWidth = w === 0 ? 2.5 : (isConnected ? 4 : 3);
                     ctx.beginPath();
                     ctx.moveTo(pos.x, pos.y - 15);
@@ -1620,18 +2344,18 @@
                     ctx.strokeRect(targetX - 32, targetY - 32, 64, 64);
 
                     const pulse = (Date.now() % 1000) / 1000 * 20;
-                    ctx.strokeStyle = 'rgba(217, 70, 239, 0.65)';
+                    ctx.strokeStyle = rayPreset.glow + 'aa';
                     ctx.strokeRect(targetX - 32 - pulse, targetY - 32 - pulse, 64 + pulse * 2, 64 + pulse * 2);
 
                     ctx.save();
                     ctx.translate(targetX, targetY);
                     ctx.rotate((Date.now() % 2400) / 2400 * Math.PI * 2);
-                    ctx.strokeStyle = '#f0abfc';
+                    ctx.strokeStyle = rayPreset.box;
                     ctx.lineWidth = 2;
                     ctx.strokeRect(-24, -24, 48, 48);
                     ctx.restore();
                 } else {
-                    ctx.fillStyle = '#a020f0';
+                    ctx.fillStyle = rayPreset.beam;
                     ctx.beginPath();
                     ctx.arc(targetX, targetY, 6 + Math.sin(Date.now() / 80) * 2, 0, Math.PI * 2);
                     ctx.fill();
@@ -1654,12 +2378,14 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
+            // Head
             ctx.beginPath();
             ctx.arc(0, -45, 18, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.fill();
             ctx.stroke();
 
+            // Eyes / Expression
             let eyeLookX = 0;
             let eyeLookY = 0;
             if (mouse.isDown) {
@@ -1670,13 +2396,8 @@
                 eyeLookX = (this.body.velocity.x > 0 ? 1 : -1) * 3;
             }
 
-            ctx.fillStyle = '#000000';
-            ctx.beginPath();
-            ctx.arc(-6 + eyeLookX, -46 + eyeLookY, 2.8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(6 + eyeLookX, -46 + eyeLookY, 2.8, 0, Math.PI * 2);
-            ctx.fill();
+            drawSteveFace(ctx, steveAppearance.expression, eyeLookX, eyeLookY);
+            drawSteveHeadgear(ctx, steveAppearance.headgear);
 
             ctx.beginPath();
             ctx.moveTo(0, -27);
@@ -4284,6 +5005,7 @@
     function startGame() {
         SoundFX.init();
         SoundFX.startMusic();
+        toggleCustomizer(false);
         document.getElementById('title-screen').style.display = 'none';
         document.getElementById('hud-layer').style.display = 'block';
         gameStarted = true;
@@ -4292,12 +5014,13 @@
     }
 
     function resetGame() {
-        SoundFX.init();
-        SoundFX.startMusic();
         document.getElementById('game-over-box').style.display = 'none';
-        document.getElementById('hud-layer').style.display = 'block';
-        gameStarted = true;
+        document.getElementById('hud-layer').style.display = 'none';
+        document.getElementById('title-screen').style.display = 'flex';
+        toggleCustomizer(false);
+        gameStarted = false;
         isPaused = false;
+        SoundFX.stopMusic();
         initGame();
     }
 
