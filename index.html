@@ -146,30 +146,23 @@
                 <p class="text-xs text-purple-300 mb-4 tracking-wide">HOLD Left Mouse to channel psychic waves • Release to throw • Press [N] to Skip Wave</p>
                 
                 <!-- Difficulty Selector -->
-                <div class="flex gap-4 mb-3" id="difficulty-selector">
-                    <button id="btn-diff-easy" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
-                    <button id="btn-diff-normal" class="px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
-                    <button id="btn-diff-hard" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
-                </div>
-
-                <button class="play-btn" onclick="startGame()">PLAY</button>
+            <div class="flex gap-4 mb-3" id="difficulty-selector">
+                <button id="btn-diff-easy" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
+                <button id="btn-diff-normal" class="px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
+                <button id="btn-diff-hard" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
             </div>
 
-            <!-- HUD Layer (Active Gameplay) -->
-            <div id="hud-layer" style="display: none; position: absolute; top: 14px; right: 14px; pointer-events: auto;">
-                <button id="pause-btn" class="bg-gray-900/80 border-2 border-purple-400 text-purple-200 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold hover:bg-purple-600 hover:text-white transition-all shadow-[0_0_10px_rgba(168,85,247,0.5)]" onclick="togglePause()">
-                    ⏸
-                </button>
-            </div>
+            <button class="play-btn" onclick="startGame()">PLAY</button>
+        </div>
 
-            <!-- Pause Screen -->
-            <div id="pause-screen" class="message-box" style="z-index: 60;">
-                <h1 class="text-5xl font-extrabold text-purple-400 mb-6 drop-shadow-md tracking-widest">PAUSED</h1>
-                <button class="play-btn !text-xl !px-8 !py-3 !mt-0" onclick="togglePause()">RESUME</button>
-            </div>
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="message-box" style="z-index: 60;">
+            <h1 class="text-5xl font-extrabold text-purple-400 mb-6 drop-shadow-md tracking-widest">PAUSED</h1>
+            <button class="play-btn !text-xl !px-8 !py-3 !mt-0" onclick="togglePause()">RESUME</button>
+        </div>
 
-            <!-- Game Over Screen -->
-            <div id="game-over-box" class="message-box">
+        <!-- Game Over Screen -->
+        <div id="game-over-box" class="message-box">
                 <h1 class="text-4xl font-extrabold text-red-500 mb-2 drop-shadow-md">YOU DIED</h1>
                 <p id="wave-reached" class="text-xl mb-4 text-purple-200"></p>
                 
@@ -184,6 +177,16 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Off-Screen Top-Right Global Pause Button with Custom Drawn Vector Icon -->
+<div id="hud-layer" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 9999; pointer-events: auto;">
+    <button id="pause-btn" class="group bg-slate-900/90 border-2 border-purple-400/80 hover:border-purple-300 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(168,85,247,0.8)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="togglePause()" title="Pause (P or Esc)">
+        <svg class="w-4 h-4 text-purple-300 group-hover:text-white transition-colors drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="5" y="4" width="4.5" height="16" rx="2" />
+            <rect x="14.5" y="4" width="4.5" height="16" rx="2" />
+        </svg>
+    </button>
 </div>
 
 <script>
@@ -741,15 +744,23 @@
 
     let isMobileDevice = false;
 
+    // Stagnant, fixed-position virtual stick configuration
+    const MOVE_STICK_BASE_X = 190;
+    const MOVE_STICK_BASE_Y = 770;
+    const PSYCHIC_STICK_BASE_X = 1250;
+    const PSYCHIC_STICK_BASE_Y = 770;
+
     const moveStick = {
         touchId: null, active: false,
-        baseX: 200, baseY: 780, stickX: 200, stickY: 780,
+        baseX: MOVE_STICK_BASE_X, baseY: MOVE_STICK_BASE_Y,
+        stickX: MOVE_STICK_BASE_X, stickY: MOVE_STICK_BASE_Y,
         baseRadius: 105, handleRadius: 52, deadzone: 16
     };
 
     const psychicStick = {
         touchId: null, active: false,
-        baseX: 1240, baseY: 780, stickX: 1240, stickY: 780,
+        baseX: PSYCHIC_STICK_BASE_X, baseY: PSYCHIC_STICK_BASE_Y,
+        stickX: PSYCHIC_STICK_BASE_X, stickY: PSYCHIC_STICK_BASE_Y,
         baseRadius: 120, handleRadius: 56, angle: 0, distanceRatio: 0
     };
 
@@ -932,6 +943,87 @@
             ctx.strokeStyle = 'black';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(x, y, width, height);
+        }
+    }
+
+    // --- GOLEM THROWN BOULDER ---
+    class GolemBoulder extends Entity {
+        constructor(x, y) {
+            const body = Bodies.circle(x, y, 32, {
+                restitution: 0.15,
+                friction: 0.35,
+                density: 0.007
+            });
+            super(body, 2, 'boulder', 2.8);
+            this.isGolemThrown = true;
+            this.canBeGrabbed = true;
+            this.body.isThrown = true;
+            this.lifespan = 400;
+        }
+
+        update() {
+            if (this.isDying || this.markedForDeletion) return;
+            const pos = this.body.position;
+
+            // Fiery friction particles trailing behind the flying boulder
+            if (Math.hypot(this.body.velocity.x, this.body.velocity.y) > 8) {
+                particles.push(new Particle(pos.x, pos.y, '#f59e0b', 5, Math.random() * 4 + 2, 14));
+                particles.push(new Particle(pos.x, pos.y, '#ef4444', 4, Math.random() * 3 + 1, 10));
+            }
+
+            // Check collision with unbroken platforms so boulder never phases through
+            for (let i = 0; i < breakablePlatforms.length; i++) {
+                const plat = breakablePlatforms[i];
+                if (!plat.isBroken && Matter.Bounds.contains(plat.bounds, pos)) {
+                    createExplosion(pos.x, pos.y, '#475569', 20, 'shard');
+                    SoundFX.playHit();
+                    this.die();
+                    return;
+                }
+            }
+
+            this.lifespan--;
+            if (this.lifespan <= 0 || pos.y > 1050 || pos.x < -180 || pos.x > 1620) {
+                this.die();
+            }
+        }
+
+        draw(ctx) {
+            const pos = this.body.position;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(this.body.angle);
+
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = Math.hypot(this.body.velocity.x, this.body.velocity.y) > 10 ? 16 : 4;
+
+            ctx.fillStyle = '#475569';
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 4;
+
+            ctx.beginPath();
+            const rad = 30;
+            // Jagged rock polygon
+            for (let i = 0; i < 7; i++) {
+                const ang = (i / 7) * Math.PI * 2;
+                const r = rad + (i % 2 === 0 ? 4 : -4);
+                const rx = Math.cos(ang) * r;
+                const ry = Math.sin(ang) * r;
+                if (i === 0) ctx.moveTo(rx, ry);
+                else ctx.lineTo(rx, ry);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Cracks
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(-10, -8); ctx.lineTo(4, 2); ctx.lineTo(12, -4);
+            ctx.stroke();
+
+            ctx.restore();
         }
     }
 
@@ -1248,10 +1340,18 @@
             if (this.invulnerableTimer > 0) this.invulnerableTimer--;
             if (this.isDying) return;
 
-            this.healTimer = (this.healTimer || 0) + 1;
-            if (this.healTimer >= 90) {
+            // Anti-Stall Healing Rule:
+            // Steve only passively heals if he is down near combat level (y > 520) 
+            // or actively channeling psychic abilities. Camping high up (y <= 500) passively freezes regeneration!
+            const isCampingHigh = this.body.position.y < 500 && !mouse.isDown;
+            if (!isCampingHigh) {
+                this.healTimer = (this.healTimer || 0) + 1;
+                if (this.healTimer >= 90) {
+                    this.healTimer = 0;
+                    if (this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 1);
+                }
+            } else {
                 this.healTimer = 0;
-                if (this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 1);
             }
 
             const moveSpeed = 8;
@@ -1708,6 +1808,9 @@
             this.hasSplit = false;
             this.isBoss = tier === 3;
             this.enteringTimer = 0;
+            this.jumpCooldown = Math.floor(Math.random() * 30);
+            this.isChargingPounce = false;
+            this.pounceTimer = 0;
         }
 
         update() {
@@ -1727,29 +1830,118 @@
                 }
             }
 
+            // Boss Slimes cannot be thrown out: enforce strict boundary rebound and pit bounce
+            if (this.isBoss) {
+                let clampedX = pos.x;
+                let clampedY = pos.y;
+                let bouncedEdge = false;
+
+                const minBossX = 90;
+                const maxBossX = 1350;
+                if (pos.x < minBossX) {
+                    clampedX = minBossX;
+                    Matter.Body.setVelocity(this.body, { x: Math.abs(this.body.velocity.x) * 0.75 + 4, y: this.body.velocity.y });
+                    bouncedEdge = true;
+                } else if (pos.x > maxBossX) {
+                    clampedX = maxBossX;
+                    Matter.Body.setVelocity(this.body, { x: -Math.abs(this.body.velocity.x) * 0.75 - 4, y: this.body.velocity.y });
+                    bouncedEdge = true;
+                }
+
+                if (pos.y > 840) {
+                    clampedY = 830;
+                    Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.8, y: -16.0 });
+                    SoundFX.playJump();
+                    createExplosion(clampedX, 890, '#22c55e', 14);
+                }
+
+                if (bouncedEdge || clampedY !== pos.y) {
+                    Matter.Body.setPosition(this.body, { x: clampedX, y: clampedY });
+                }
+            }
+
             if (this.spawnGraceTimer <= 0) {
-                if (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590))) {
+                // Regular mobs despawn off-screen; Boss Slimes are protected from ring-out despawns
+                if (!this.isBoss && (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590)))) {
                     this.die();
                     return;
                 }
             }
 
             const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
+
+            // While in mid-air above Steve: perform an aggressive downward body slam
+            if (isMidAir && player && !player.isDying && this.body.velocity.y > 0) {
+                const ppos = player.body.position;
+                if (Math.abs(ppos.x - pos.x) < 80 && ppos.y > pos.y + 40 && this.body.velocity.y < 12) {
+                    // Dive-bomb downwards
+                    Body.setVelocity(this.body, { x: this.body.velocity.x * 0.95, y: 15.0 });
+                }
+                return;
+            }
+
             if (isMidAir) return;
 
-            if (pos.x < 60) this.dir = 1;
-            else if (pos.x > 1380) this.dir = -1;
+            if (this.jumpCooldown > 0) this.jumpCooldown--;
 
-            this.moveTimer++;
-            if (this.moveTimer > 60 && pos.x >= 60 && pos.x <= 1380) {
-                this.dir = Math.random() > 0.5 ? 1 : -1;
-                this.moveTimer = 0;
+            // Aggressive player-tracking behavior
+            if (player && !player.isDying) {
+                const px = player.body.position.x;
+                const py = player.body.position.y;
+                const dx = px - pos.x;
+                const dy = py - pos.y;
+                const distToSteve = Math.hypot(dx, dy);
+                const targetDir = dx > 0 ? 1 : -1;
+                this.dir = targetDir;
+
+                // Close-range pounce attack preparation
+                if (distToSteve < 360 && this.jumpCooldown <= 0) {
+                    this.pounceTimer++;
+
+                    // Quick squash telegraph (10 frames) before launching into Steve
+                    if (this.pounceTimer >= 10) {
+                        this.pounceTimer = 0;
+                        this.jumpCooldown = 40 + Math.floor(Math.random() * 25);
+
+                        const pounceVx = targetDir * (6.5 + Math.min(distToSteve * 0.015, 4.5));
+                        // High vertical launch if Steve is above on a platform, otherwise aggressive low arc
+                        const isElevated = py < pos.y - 60;
+                        const pounceVy = isElevated ? -16.5 : -11.0;
+
+                        Body.setVelocity(this.body, { x: pounceVx, y: pounceVy });
+                        SoundFX.playJump();
+                        return;
+                    }
+
+                    // Squat/brake slightly while priming the pounce
+                    Body.setVelocity(this.body, { x: this.body.velocity.x * 0.5, y: this.body.velocity.y });
+                    return;
+                } else {
+                    this.pounceTimer = 0;
+                }
+
+                // Frequent forward hops toward Steve while pursuing
+                if (this.jumpCooldown <= 0 && Math.random() < 0.045) {
+                    this.jumpCooldown = 35 + Math.floor(Math.random() * 20);
+                    const hopVy = (py < pos.y - 70) ? -15.5 : -9.5;
+                    Body.setVelocity(this.body, { x: targetDir * 5.2, y: hopVy });
+                }
+
+                const pursuitSpeed = Math.max(2.4, 4.2 - this.tier * 0.4);
+                Body.setVelocity(this.body, { x: targetDir * pursuitSpeed, y: this.body.velocity.y });
+            } else {
+                // Idle wander fallback if no player
+                if (pos.x < 60) this.dir = 1;
+                else if (pos.x > 1380) this.dir = -1;
+
+                this.moveTimer++;
+                if (this.moveTimer > 60 && pos.x >= 60 && pos.x <= 1380) {
+                    this.dir = Math.random() > 0.5 ? 1 : -1;
+                    this.moveTimer = 0;
+                }
+                const speed = Math.max(1.8, 3.0 - this.tier * 0.4);
+                Body.setVelocity(this.body, { x: this.dir * speed, y: this.body.velocity.y });
             }
-            
-            if (Math.random() < 0.03) Body.applyForce(this.body, this.body.position, { x: 0, y: -0.06 * this.weight });
-            
-            const speed = Math.max(1.8, 3.2 - this.tier * 0.4);
-            Body.setVelocity(this.body, { x: this.dir * speed, y: this.body.velocity.y });
         }
 
         die() {
@@ -1932,9 +2124,31 @@
             this.facing = 1;
             this.enteringTimer = 0;
             this.heldMob = null;
-            this.throwCooldown = 80;
+            this.throwCooldown = 60;
             this.windupTimer = 0;
             this.searchTimer = 0;
+            this.telegraphAngle = 0;
+            this.hasClearLine = false;
+            this.jumpCooldown = 0;
+        }
+
+        hasClearThrowLine(fromPos, toPos) {
+            // Raycast segment check against active breakable platforms and obstacles
+            const sampleSteps = 16;
+            for (let i = 1; i < sampleSteps; i++) {
+                const t = i / sampleSteps;
+                const sampleX = fromPos.x + (toPos.x - fromPos.x) * t;
+                const sampleY = fromPos.y + (toPos.y - fromPos.y) * t;
+                const samplePt = { x: sampleX, y: sampleY };
+
+                for (let j = 0; j < breakablePlatforms.length; j++) {
+                    const plat = breakablePlatforms[j];
+                    if (!plat.isBroken && Matter.Bounds.contains(plat.bounds, samplePt)) {
+                        return { clear: false, blockedPlat: plat };
+                    }
+                }
+            }
+            return { clear: true, blockedPlat: null };
         }
 
         update() {
@@ -1956,15 +2170,15 @@
             }
 
             if (this.spawnGraceTimer <= 0) {
-                if (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -180 || pos.x > 1620))) {
+                if (pos.y > 1050 || pos.y < -400) {
                     if (this.heldMob) this.heldMob = null;
                     this.die();
                     return;
                 }
             }
 
-            const isAirborne = Math.abs(this.body.velocity.y) > 1.8 || (player && player.grabbedEntity === this);
-            if (isAirborne) {
+            const isAirborne = Math.abs(this.body.velocity.y) > 2.0 || (player && player.grabbedEntity === this);
+            if (isAirborne && (player && player.grabbedEntity === this)) {
                 if (this.heldMob) {
                     this.heldMob = null;
                     this.windupTimer = 0;
@@ -1975,43 +2189,99 @@
             if (!player || player.isDying) return;
 
             const px = player.body.position.x;
+            const py = player.body.position.y;
             const dir = px > pos.x ? 1 : -1;
             this.facing = dir;
 
             if (this.throwCooldown > 0) this.throwCooldown--;
+            if (this.jumpCooldown > 0) this.jumpCooldown--;
 
+            let moveSpeed = 1.8;
+
+            // When holding an item or boulder to throw
             if (this.heldMob) {
                 if (this.heldMob.isDying || this.heldMob.markedForDeletion || (player && player.grabbedEntity === this.heldMob)) {
                     this.heldMob = null;
                     this.windupTimer = 0;
                 } else {
-                    Body.setPosition(this.heldMob.body, { x: pos.x + this.facing * 20, y: pos.y - 100 });
+                    const launchOrigin = { x: pos.x + this.facing * 22, y: pos.y - 105 };
+                    Body.setPosition(this.heldMob.body, launchOrigin);
                     Body.setVelocity(this.heldMob.body, { x: 0, y: 0 });
 
-                    this.windupTimer++;
-                    if (this.windupTimer >= 24) {
-                        const targetPos = player.body.position;
-                        const throwAngle = Math.atan2(targetPos.y - (pos.y - 100), targetPos.x - pos.x);
-                        const throwSpeed = 34;
+                    // Predictive aim calculation leading Steve's velocity
+                    const stevePos = player.body.position;
+                    const steveVel = player.body.velocity;
+                    const rawDist = Math.hypot(stevePos.x - launchOrigin.x, stevePos.y - launchOrigin.y);
+                    const leadFrames = Math.min(22, rawDist / 38);
 
-                        Body.setVelocity(this.heldMob.body, {
-                            x: Math.cos(throwAngle) * throwSpeed,
-                            y: Math.sin(throwAngle) * throwSpeed - 4
-                        });
-                        this.heldMob.body.isThrown = true;
-                        if (this.heldMob.type === 'player') {
-                            this.heldMob.takeDamage(20, this.body);
+                    const predictedX = stevePos.x + steveVel.x * leadFrames;
+                    const predictedY = stevePos.y + steveVel.y * leadFrames * 0.5 - 15;
+                    this.telegraphAngle = Math.atan2(predictedY - launchOrigin.y, predictedX - launchOrigin.x);
+
+                    // Check line of sight against barriers
+                    const losCheck = this.hasClearThrowLine(launchOrigin, { x: predictedX, y: predictedY });
+                    this.hasClearLine = losCheck.clear;
+
+                    if (!this.hasClearLine) {
+                        // OBSTRUCTED: Refuse to throw through the wall/platform!
+                        this.windupTimer = Math.min(10, this.windupTimer);
+                        moveSpeed = 3.2;
+
+                        if (losCheck.blockedPlat) {
+                            const bplat = losCheck.blockedPlat;
+                            const leftEdge = bplat.position.x - bplat.origW / 2;
+                            const rightEdge = bplat.position.x + bplat.origW / 2;
+                            const distToLeft = Math.abs(pos.x - leftEdge);
+                            const distToRight = Math.abs(pos.x - rightEdge);
+
+                            let flankDir = distToLeft < distToRight ? -1 : 1;
+                            
+                            // Prevent flanking path from guiding Golems off screen
+                            if (pos.x < 140) flankDir = 1;
+                            else if (pos.x > 1300) flankDir = -1;
+
+                            Body.setVelocity(this.body, { x: flankDir * moveSpeed, y: this.body.velocity.y });
+
+                            if (py < pos.y - 60 && this.jumpCooldown <= 0 && Math.abs(this.body.velocity.y) < 1.0) {
+                                Body.setVelocity(this.body, { x: flankDir * 4.5, y: -16 });
+                                this.jumpCooldown = 90;
+                                SoundFX.playJump();
+                            }
                         }
-                        this.heldMob = null;
-                        this.windupTimer = 0;
-                        this.throwCooldown = 90;
-                        SoundFX.playThrow();
-                        shakeAmount = Math.max(shakeAmount, 14);
+                    } else {
+                        // CLEAR LINE-OF-SIGHT: Wind up and release!
+                        this.windupTimer++;
+
+                        if (this.windupTimer % 4 === 0) {
+                            particles.push(new Particle(launchOrigin.x + (Math.random() - 0.5) * 40, launchOrigin.y + (Math.random() - 0.5) * 40, '#f59e0b', 7, 3, 14));
+                        }
+
+                        if (this.windupTimer >= 36) {
+                            const throwSpeed = 44;
+                            const vx = Math.cos(this.telegraphAngle) * throwSpeed;
+                            const vy = Math.sin(this.telegraphAngle) * throwSpeed - 2.5;
+
+                            Body.setVelocity(this.heldMob.body, { x: vx, y: vy });
+                            this.heldMob.body.isThrown = true;
+                            this.heldMob.body.isGolemThrown = true;
+                            if (this.heldMob.type === 'player') {
+                                this.heldMob.takeDamage(35, this.body);
+                            }
+
+                            this.heldMob = null;
+                            this.windupTimer = 0;
+                            this.throwCooldown = 110;
+                            SoundFX.playThrow();
+                            SoundFX.playExplosion(0.8);
+                            shakeAmount = Math.max(shakeAmount, 22);
+                        }
                     }
                 }
             } else if (this.throwCooldown <= 0 && !this.isEntering) {
                 this.searchTimer = (this.searchTimer || 0) + 1;
-                if (this.searchTimer % 8 === 0) {
+                let foundCandidate = null;
+
+                if (this.searchTimer % 6 === 0) {
                     for (let i = 0; i < entities.length; i++) {
                         const e = entities[i];
                         if (e !== this && 
@@ -2022,17 +2292,43 @@
                             e.type !== 'flail' &&
                             !e.isBoss &&
                             (!player || player.grabbedEntity !== e) &&
-                            Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y) < 160) {
-                            this.heldMob = e;
-                            this.windupTimer = 0;
+                            Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y) < 180) {
+                            foundCandidate = e;
                             break;
                         }
                     }
+
+                    if (!foundCandidate) {
+                        const boulder = new GolemBoulder(pos.x + this.facing * 30, pos.y + 20);
+                        foundCandidate = boulder;
+                        SoundFX.playHit();
+                        createExplosion(pos.x + this.facing * 30, 890, '#78350f', 18, 'shard');
+                        shakeAmount = Math.max(shakeAmount, 10);
+                    }
+
+                    this.heldMob = foundCandidate;
+                    this.windupTimer = 0;
                 }
             }
 
-            const speed = this.heldMob ? 1.2 : 1.8;
-            Body.setVelocity(this.body, { x: dir * speed, y: this.body.velocity.y });
+            if (!this.heldMob || this.hasClearLine) {
+                let spd = (this.heldMob ? 0.9 : 1.8) * dir;
+                
+                // Arena perimeter bounds: turn around before reaching screen boundaries
+                if (!this.isEntering) {
+                    if (pos.x < 110) spd = Math.max(spd, 1.8);
+                    else if (pos.x > 1330) spd = Math.min(spd, -1.8);
+                }
+
+                Body.setVelocity(this.body, { x: spd, y: this.body.velocity.y });
+            }
+
+            // Hard clamp inside arena once entry phase is completed
+            if (!this.isEntering) {
+                if (pos.x < 65) Matter.Body.setPosition(this.body, { x: 65, y: pos.y });
+                else if (pos.x > 1375) Matter.Body.setPosition(this.body, { x: 1375, y: pos.y });
+            }
+
             this.animTimer += 0.08;
         }
 
@@ -2043,6 +2339,7 @@
 
         draw(ctx) {
             const pos = this.body.position;
+
             ctx.save();
             ctx.translate(pos.x, pos.y);
 
@@ -2103,7 +2400,7 @@
                 if (this.windupTimer > 12) {
                     ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
                     ctx.beginPath();
-                    ctx.arc(dir * 20, -100, 52 + Math.sin(Date.now() / 40) * 10, 0, Math.PI * 2);
+                    ctx.arc(dir * 22, -105, 52 + Math.sin(Date.now() / 40) * 10, 0, Math.PI * 2);
                     ctx.fill();
                 }
             } else {
@@ -2203,8 +2500,15 @@
             const py = player.body.position.y;
             this.facing = px > pos.x ? 1 : -1;
 
+            // Anti-stall: if Steve is camping on the middle platform above, leap upward to bite
+            const isSteveCampingAbove = (py < pos.y - 80) && Math.abs(px - pos.x) < 180;
             const chompImpulse = this.isOpen ? 3.6 : 1.4;
-            const vy = (py < pos.y - 40 && Math.random() < 0.04) ? -7 : this.body.velocity.y;
+            let vy = this.body.velocity.y;
+            if (isSteveCampingAbove && Math.random() < 0.08) {
+                vy = -14.5;
+            } else if (py < pos.y - 40 && Math.random() < 0.04) {
+                vy = -7;
+            }
             Body.setVelocity(this.body, { x: this.facing * chompImpulse, y: vy });
         }
 
@@ -2631,9 +2935,12 @@
             const dist = Math.hypot(dx, dy) || 1;
             const throwSpeed = 18.5;
 
+            // Anti-stall high trajectory: if Steve is high above, compensate trajectory upwards
+            const steveHighBoost = (targetY < spawnY - 100) ? -10.5 : -6.2;
+
             Body.setVelocity(bone.body, {
                 x: (dx / dist) * throwSpeed,
-                y: (dy / dist) * throwSpeed - 6.2
+                y: (dy / dist) * throwSpeed + (steveHighBoost + 6.2) - 6.2
             });
 
             SoundFX.playBoneClack();
@@ -3136,17 +3443,31 @@
                             const dx = (this.targetLandingX || pos.x) - pos.x;
                             const dy = targetY - pos.y;
                             const dist = Math.hypot(dx, dy) || 1;
-                            const dashSpeed = 48; // Fast, decisive targeted slam
+                            const dashSpeed = 54; // Fast, decisive slam
+                            this.dashVx = (dx / dist) * dashSpeed;
+                            this.dashVy = (dy / dist) * dashSpeed;
                             Matter.Body.setVelocity(this.body, { 
-                                x: (dx / dist) * dashSpeed, 
-                                y: (dy / dist) * dashSpeed 
+                                x: this.dashVx, 
+                                y: this.dashVy 
                             });
                             SoundFX.playExplosion(1.3);
                             shakeAmount = 24;
                         }
                     } else if (this.state === 'stage3_dash') {
                         this.canBeGrabbed = false;
-                        if (pos.y >= 780 || Math.hypot(this.body.velocity.x, this.body.velocity.y) < 4.0) {
+                        // Maintain full high velocity throughout flight to prevent deceleration
+                        if (this.dashVx !== undefined && this.dashVy !== undefined) {
+                            Matter.Body.setVelocity(this.body, { x: this.dashVx, y: this.dashVy });
+                        }
+
+                        // Slam particle trail while cutting through the sky
+                        if (this.stateTimer % 2 === 0) {
+                            particles.push(new Particle(pos.x, pos.y, '#f97316', 8, Math.random() * 5 + 3, 18));
+                            particles.push(new Particle(pos.x, pos.y, '#ef4444', 6, Math.random() * 4 + 2, 14));
+                        }
+
+                        // Full flight until it physically reaches the ground
+                        if (pos.y >= 815) {
                             this.state = 'stage3_stuck';
                             this.stateTimer = 0;
                             this.vulnerableTimer = 0;
@@ -3339,8 +3660,8 @@
 
                 if (this.flailReboundTimer > 0) {
                     this.flailReboundTimer--;
-                    if (this.flailEntity) this.flailEntity.canBeGrabbed = false;
-                } else if (this.flailEntity) {
+                    this.flailEntity.canBeGrabbed = false;
+                } else {
                     this.flailEntity.canBeGrabbed = true;
                 }
 
@@ -3391,6 +3712,9 @@
                         this.flailEntity.canBeGrabbed = false;
                     }
                 }
+            } else if (this.flailReboundTimer > 0) {
+                // If flail is already null/destroyed, decrement timer without touching flailEntity
+                this.flailReboundTimer = 0;
             }
 
             for (let i = 0; i < entities.length; i++) {
@@ -3409,49 +3733,6 @@
 
         draw(ctx) {
             const pos = this.body.position;
-
-            if (this.flailEntity && !this.flailEntity.isDying) {
-                const fpos = this.flailEntity.body.position;
-                const linkCount = 10;
-                ctx.strokeStyle = '#475569';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
-                ctx.lineTo(fpos.x, fpos.y);
-                ctx.stroke();
-
-                for (let i = 1; i < linkCount; i++) {
-                    const lx = pos.x + (fpos.x - pos.x) * (i / linkCount);
-                    const ly = pos.y + (fpos.y - pos.y) * (i / linkCount);
-                    ctx.fillStyle = '#64748b';
-                    ctx.beginPath();
-                    ctx.arc(lx, ly, 6, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                ctx.save();
-                ctx.translate(fpos.x, fpos.y);
-                const spikeCountFlail = 8;
-                const flailDrawRad = 58;
-                for (let i = 0; i < spikeCountFlail; i++) {
-                    const ang = (i / spikeCountFlail) * Math.PI * 2 + this.angle * 2.5;
-                    ctx.fillStyle = '#334155';
-                    ctx.beginPath();
-                    ctx.moveTo(Math.cos(ang - 0.25) * (flailDrawRad * 0.85), Math.sin(ang - 0.25) * (flailDrawRad * 0.85));
-                    ctx.lineTo(Math.cos(ang) * (flailDrawRad * 1.45), Math.sin(ang) * (flailDrawRad * 1.45));
-                    ctx.lineTo(Math.cos(ang + 0.25) * (flailDrawRad * 0.85), Math.sin(ang + 0.25) * (flailDrawRad * 0.85));
-                    ctx.closePath();
-                    ctx.fill();
-                }
-                ctx.fillStyle = '#1e293b';
-                ctx.strokeStyle = '#94a3b8';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.arc(0, 0, flailDrawRad, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
-            }
 
             ctx.save();
             ctx.translate(pos.x, pos.y);
@@ -3737,7 +4018,11 @@
 
         takeDamage(amount, sourceBody = null) {
             if (this.isDying || this.markedForDeletion) return;
-            if ((this.flungByPlayer && this.body.isThrown) || amount >= 1000) {
+            // Prevent detonation while actively held by player
+            if (player && player.grabbedEntity === this) return;
+            
+            // Large slam or forced explosion
+            if (amount >= 1000) {
                 this.explode();
             }
         }
@@ -3752,6 +4037,9 @@
 
         explode() {
             if (this.isDying || this.markedForDeletion) return;
+            // Never detonate while held by the player
+            if (player && player.grabbedEntity === this) return;
+            
             this.isDying = true;
             this.markedForDeletion = true;
 
@@ -4198,20 +4486,17 @@
             if (pos.x < halfWidth && moveStick.touchId === null) {
                 moveStick.touchId = touch.identifier;
                 moveStick.active = true;
-                moveStick.baseX = pos.x;
-                moveStick.baseY = pos.y;
-                moveStick.stickX = pos.x;
-                moveStick.stickY = pos.y;
+                // Base coordinates remain completely stagnant / fixed
+                moveStick.baseX = MOVE_STICK_BASE_X;
+                moveStick.baseY = MOVE_STICK_BASE_Y;
                 updateMoveStick(pos.x, pos.y);
             }
             else if (pos.x >= halfWidth && psychicStick.touchId === null) {
                 psychicStick.touchId = touch.identifier;
                 psychicStick.active = true;
-                psychicStick.baseX = pos.x;
-                psychicStick.baseY = pos.y;
-                psychicStick.stickX = pos.x;
-                psychicStick.stickY = pos.y;
-                psychicStick.distanceRatio = 0;
+                // Base coordinates remain completely stagnant / fixed
+                psychicStick.baseX = PSYCHIC_STICK_BASE_X;
+                psychicStick.baseY = PSYCHIC_STICK_BASE_Y;
                 updatePsychicStick(pos.x, pos.y);
             }
         }
@@ -4285,16 +4570,18 @@
             if (touch.identifier === moveStick.touchId) {
                 moveStick.touchId = null;
                 moveStick.active = false;
-                moveStick.stickX = moveStick.baseX;
-                moveStick.stickY = moveStick.baseY;
+                // Snap stick handle cleanly back to stagnant center
+                moveStick.stickX = MOVE_STICK_BASE_X;
+                moveStick.stickY = MOVE_STICK_BASE_Y;
                 keys.a = false;
                 keys.d = false;
                 keys.w = false;
             } else if (touch.identifier === psychicStick.touchId) {
                 psychicStick.touchId = null;
                 psychicStick.active = false;
-                psychicStick.stickX = psychicStick.baseX;
-                psychicStick.stickY = psychicStick.baseY;
+                // Snap stick handle cleanly back to stagnant center
+                psychicStick.stickX = PSYCHIC_STICK_BASE_X;
+                psychicStick.stickY = PSYCHIC_STICK_BASE_Y;
                 psychicStick.distanceRatio = 0;
                 mouse.isDown = false;
                 if (player) {
@@ -4384,6 +4671,24 @@
         if (entA && entB) {
             if ((entA.type === 'box' && entB.type === 'player') || (entB.type === 'box' && entA.type === 'player')) {
                 return;
+            }
+
+            // Golem thrown boulder vs player contact
+            if (entA.type === 'boulder' && entB.type === 'player') {
+                const spd = Math.hypot(bodyA.velocity.x, bodyA.velocity.y);
+                if (spd > 7 && player.invulnerableTimer <= 0) {
+                    player.takeDamage(35, bodyA);
+                    applyPlayerHurtKnockback(bodyA);
+                    entA.die();
+                }
+            }
+            if (entB.type === 'boulder' && entA.type === 'player') {
+                const spd = Math.hypot(bodyB.velocity.x, bodyB.velocity.y);
+                if (spd > 7 && player.invulnerableTimer <= 0) {
+                    player.takeDamage(35, bodyB);
+                    applyPlayerHurtKnockback(bodyB);
+                    entB.die();
+                }
             }
 
             if (entA.type === 'slime' && entB.type === 'player' && isStart) {
@@ -4533,13 +4838,8 @@
                 }
             }
 
-            if (isStart) {
-                if ((entA.type === 'bomb' && bodyA.isThrown) ||
-                    (entB.type === 'bomb' && bodyB.isThrown)) {
-                    if (entA.type === 'bomb') entA.explode();
-                    if (entB.type === 'bomb') entB.explode();
-                }
-            }
+            // Note: Bombs no longer trigger instant contact explosions here on soft nudges.
+            // Detonations are strictly handled by checkThrownImpact with a heavy slam threshold.
         }
     }
 
@@ -4556,22 +4856,48 @@
         
         if ((entA && entA.type === 'heart') || (entB && entB.type === 'heart')) return;
 
+        // Relative impact velocity & thresholds
         const relVel = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
         const MINOR_VELOCITY_THRESHOLD = 6;
         const HIGH_VELOCITY_THRESHOLD = 15;
+        const BOMB_SLAM_THRESHOLD = 4.2; // Requires slightly less force to detonate
 
-        // STAGE 2 BOSS SPIKES (Flung by player into Boss)
-        if (entA && entA.isBossSpike && (bodyA.isThrown || entA.playerOwned) && entB && entB.type === 'spike_boss' && entB.bossStage === 2) {
-            entB.hitCooldown = 0;
-            entB.takeDamage(1, bodyA);
-            entA.die();
-            return;
+        // GOLEM THROWN MISSILE COLLISION WITH STEVE OR WALLS
+        if (entA && bodyA.isGolemThrown) {
+            if (entB && entB.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(35, bodyA);
+                    applyPlayerHurtKnockback(bodyA);
+                    bodyA.isGolemThrown = false;
+                    if (entA.type === 'boulder') entA.die();
+                }
+                return;
+            } else if (bodyB.isStatic || (entB && entB.type === 'box')) {
+                // Shatter on walls or platforms instead of phasing
+                createExplosion(bodyA.position.x, bodyA.position.y, '#475569', 18, 'shard');
+                SoundFX.playHit();
+                bodyA.isGolemThrown = false;
+                if (entA.type === 'boulder') entA.die();
+                return;
+            }
         }
-        if (entB && entB.isBossSpike && (bodyB.isThrown || entB.playerOwned) && entA && entA.type === 'spike_boss' && entA.bossStage === 2) {
-            entA.hitCooldown = 0;
-            entA.takeDamage(1, bodyB);
-            entB.die();
-            return;
+        if (entB && bodyB.isGolemThrown) {
+            if (entA && entA.type === 'player') {
+                if (player.invulnerableTimer <= 0) {
+                    player.takeDamage(35, bodyB);
+                    applyPlayerHurtKnockback(bodyB);
+                    bodyB.isGolemThrown = false;
+                    if (entB.type === 'boulder') entB.die();
+                }
+                return;
+            } else if (bodyA.isStatic || (entA && entA.type === 'box')) {
+                // Shatter on walls or platforms instead of phasing
+                createExplosion(bodyB.position.x, bodyB.position.y, '#475569', 18, 'shard');
+                SoundFX.playHit();
+                bodyB.isGolemThrown = false;
+                if (entB.type === 'boulder') entB.die();
+                return;
+            }
         }
 
         // STAGE 3 BOSS GROUND SLAMS: Requires heavy slam velocity (relVel >= 18.0)
@@ -4630,16 +4956,23 @@
             }
         }
 
+        // BOMBS: Require large slam velocity (relVel >= 21.0) and must not be currently held
         if (entA && entA.type === 'bomb') {
-            if (entA.flungByPlayer && bodyA.isThrown && relVel > HIGH_VELOCITY_THRESHOLD) {
-                entA.explode();
-                return;
+            const isHeldA = player && player.grabbedEntity === entA;
+            if (!isHeldA && entA.flungByPlayer && bodyA.isThrown) {
+                if (relVel >= BOMB_SLAM_THRESHOLD) {
+                    entA.explode();
+                    return;
+                }
             }
         }
         if (entB && entB.type === 'bomb') {
-            if (entB.flungByPlayer && bodyB.isThrown && relVel > HIGH_VELOCITY_THRESHOLD) {
-                entB.explode();
-                return;
+            const isHeldB = player && player.grabbedEntity === entB;
+            if (!isHeldB && entB.flungByPlayer && bodyB.isThrown) {
+                if (relVel >= BOMB_SLAM_THRESHOLD) {
+                    entB.explode();
+                    return;
+                }
             }
         }
 
