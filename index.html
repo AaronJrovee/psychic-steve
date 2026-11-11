@@ -188,7 +188,7 @@
 
                 <h1 class="text-7xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-3">PSYCHIC STEVE</h1>
                 <p class="text-lg text-purple-200 mb-1 font-medium">A / D or Arrows to Move • W or Up to Jump</p>
-                <p class="text-xs text-purple-300 mb-4 tracking-wide">HOLD Left Mouse to channel psychic waves • Release to throw • Press [N] to Skip Wave</p>
+                <p class="text-xs text-purple-300 mb-4 tracking-wide">HOLD Left Mouse to channel psychic waves • Release to throw</p>
                 
                 <!-- Difficulty Selector -->
             <div class="flex gap-4 mb-3" id="difficulty-selector">
@@ -201,11 +201,11 @@
         </div>
 
         <!-- Appearance Customization Pop-Up Modal -->
-        <div id="customizer-modal" class="message-box !max-w-3xl !w-[92%] !p-6 !py-5" style="z-index: 70;">
-            <div class="flex items-center justify-between border-b border-purple-500/40 pb-3 mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full bg-purple-600/50 border border-purple-400/80 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-purple-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div id="customizer-modal" class="message-box !max-w-xl !w-[94%] !p-5 !py-4" style="z-index: 70;">
+            <div class="flex items-center justify-between border-b border-purple-500/40 pb-2.5 mb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-purple-600/50 border border-purple-400/80 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-purple-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="3" y1="5" x2="21" y2="5" />
                             <line x1="5.5" y1="5" x2="5.5" y2="19" />
                             <line x1="18.5" y1="5" x2="18.5" y2="19" />
@@ -215,48 +215,26 @@
                             <path d="M12 5 v1.5 a1.5 1.5 0 0 1 -1.5 1.5 l-3 3.5 h9 l-3 -3.5 a1.5 1.5 0 0 1 -1.5 -1.5" stroke-width="1.6" />
                         </svg>
                     </div>
-                    <h2 class="text-2xl font-black text-purple-300 tracking-wider">APPEARANCE CUSTOMIZATION</h2>
+                    <h2 class="text-xl font-black text-purple-300 tracking-wider">APPEARANCE CUSTOMIZATION</h2>
                 </div>
                 <button onclick="toggleCustomizer(false)" class="text-slate-400 hover:text-white text-2xl font-black px-2 py-0.5 rounded-lg hover:bg-slate-800 transition-colors" title="Close">&times;</button>
             </div>
 
-            <div class="flex flex-col md:flex-row gap-5 items-center">
+            <div class="flex flex-col sm:flex-row gap-4 items-center">
                 <!-- Live Preview Canvas -->
-                <div class="flex flex-col items-center justify-center bg-slate-950/80 p-3 rounded-2xl border-2 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.3)]">
-                    <canvas id="customizer-preview-canvas" width="220" height="230" class="rounded-xl bg-gradient-to-b from-sky-400 via-sky-200 to-emerald-400"></canvas>
-                    <span class="text-xs font-semibold text-purple-200 tracking-widest mt-2 uppercase">Live Preview</span>
+                <div class="flex flex-col items-center justify-center bg-slate-950/80 p-2.5 rounded-xl border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.25)] shrink-0">
+                    <canvas id="customizer-preview-canvas" width="200" height="200" class="rounded-lg bg-gradient-to-b from-sky-400 via-sky-200 to-emerald-400"></canvas>
+                    <span class="text-[10px] font-semibold text-purple-200 tracking-widest mt-1.5 uppercase">Live Preview</span>
                 </div>
 
-                <!-- Customization Pickers Grid -->
-                <div class="flex-1 w-full space-y-3 text-left">
-                    <!-- Headgear -->
-                    <div>
-                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Headgear</span>
-                        <div class="flex flex-wrap gap-1.5" id="opt-headgear-container"></div>
-                    </div>
-
-                    <!-- Facial Expression -->
-                    <div>
-                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Facial Expression</span>
-                        <div class="flex flex-wrap gap-1.5" id="opt-expression-container"></div>
-                    </div>
-
-                    <!-- Psychic Ray Color -->
-                    <div>
-                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Psychic Ray Color</span>
-                        <div class="flex flex-wrap gap-1.5" id="opt-raycolor-container"></div>
-                    </div>
-
-                    <!-- Movement Trail -->
-                    <div>
-                        <span class="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-1.5">Player Particle Trail</span>
-                        <div class="flex flex-wrap gap-1.5" id="opt-trail-container"></div>
-                    </div>
+                <!-- Arrow Steppers List -->
+                <div class="flex-1 w-full space-y-2 text-left" id="customizer-steppers-list">
+                    <!-- Populated dynamically via renderCustomizerSteppers() -->
                 </div>
             </div>
 
-            <div class="mt-4 pt-3 border-t border-purple-500/30 flex justify-end">
-                <button onclick="toggleCustomizer(false)" class="restart-btn !mt-0 !text-sm !px-7 !py-2">Done</button>
+            <div class="mt-3 pt-2.5 border-t border-purple-500/30 flex justify-end">
+                <button onclick="toggleCustomizer(false)" class="restart-btn !mt-0 !text-xs !px-6 !py-1.5 font-bold">Done</button>
             </div>
         </div>
 
@@ -845,7 +823,7 @@
         modal.style.display = show ? 'block' : 'none';
         if (show) {
             SoundFX.init();
-            renderCustomizerButtons();
+            renderCustomizerSteppers();
             if (!customizerAnimFrame) {
                 customizerAnimLoop();
             }
@@ -857,31 +835,66 @@
         }
     }
 
-    function setAppearance(category, value) {
-        steveAppearance[category] = value;
-        renderCustomizerButtons();
+    function stepAppearance(category, delta) {
+        const options = CUSTOMIZER_OPTIONS[category];
+        if (!options || !options.length) return;
+        const currentIdx = options.findIndex(opt => opt.id === steveAppearance[category]);
+        const nextIdx = (currentIdx + delta + options.length) % options.length;
+        steveAppearance[category] = options[nextIdx].id;
+        renderCustomizerSteppers();
     }
 
-    function renderCustomizerButtons() {
-        const categories = ['headgear', 'expression', 'rayColor', 'particleTrail'];
-        const containerMap = {
-            headgear: 'opt-headgear-container',
-            expression: 'opt-expression-container',
-            rayColor: 'opt-raycolor-container',
-            particleTrail: 'opt-trail-container'
-        };
+    function renderCustomizerSteppers() {
+        const container = document.getElementById('customizer-steppers-list');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const categories = [
+            { id: 'headgear', title: 'Headgear' },
+            { id: 'expression', title: 'Facial Expression' },
+            { id: 'rayColor', title: 'Psychic Ray Color' },
+            { id: 'particleTrail', title: 'Player Particle Trail' }
+        ];
 
         categories.forEach(cat => {
-            const container = document.getElementById(containerMap[cat]);
-            if (!container) return;
-            container.innerHTML = '';
-            CUSTOMIZER_OPTIONS[cat].forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = 'customizer-opt-btn' + (steveAppearance[cat] === opt.id ? ' active' : '');
-                btn.textContent = opt.label;
-                btn.onclick = () => setAppearance(cat, opt.id);
-                container.appendChild(btn);
-            });
+            const options = CUSTOMIZER_OPTIONS[cat.id];
+            const currentIdx = options.findIndex(opt => opt.id === steveAppearance[cat.id]);
+            const currentOpt = options[currentIdx] || options[0];
+
+            const row = document.createElement('div');
+            row.className = 'flex flex-col bg-slate-900/60 p-1.5 px-2.5 rounded-lg border border-purple-500/20';
+
+            const headerRow = document.createElement('div');
+            headerRow.className = 'flex justify-between items-center text-[11px] font-bold text-purple-300 uppercase tracking-wider mb-1';
+            headerRow.innerHTML = `<span>${cat.title}</span><span class="text-purple-400/80 font-mono text-[10px]">${currentIdx + 1} / ${options.length}</span>`;
+
+            const controlRow = document.createElement('div');
+            controlRow.className = 'flex items-center gap-1.5';
+
+            // Left arrow button
+            const leftBtn = document.createElement('button');
+            leftBtn.className = 'w-7 h-7 rounded-md bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/40 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer shrink-0 active:scale-95';
+            leftBtn.textContent = '◀';
+            leftBtn.onclick = () => stepAppearance(cat.id, -1);
+
+            // Active choice display
+            const labelBox = document.createElement('div');
+            labelBox.className = 'flex-1 text-center font-bold text-xs text-white bg-slate-800/80 py-1 px-2 rounded-md border border-purple-400/40 truncate shadow-inner';
+            labelBox.textContent = currentOpt.label;
+
+            // Right arrow button
+            const rightBtn = document.createElement('button');
+            rightBtn.className = 'w-7 h-7 rounded-md bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/40 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer shrink-0 active:scale-95';
+            rightBtn.textContent = '▶';
+            rightBtn.onclick = () => stepAppearance(cat.id, 1);
+
+            controlRow.appendChild(leftBtn);
+            controlRow.appendChild(labelBox);
+            controlRow.appendChild(rightBtn);
+
+            row.appendChild(headerRow);
+            row.appendChild(controlRow);
+            container.appendChild(row);
         });
     }
 
@@ -1299,31 +1312,35 @@
             pctx.stroke();
         }
 
-        // Pulsing psychic target reticle around floating box
+        // Proportional box size matching Steve's scaled preview (Steve: 120px * 0.85 ≈ 102px, Box: 60px * 0.85 ≈ 51px)
+        const boxSize = 51;
+        const halfBox = boxSize / 2;
+
+        // Pulsing psychic target reticle around floating proportional box
         pctx.strokeStyle = rayCfg.box;
         pctx.lineWidth = 2;
         const boxPulse = (Math.sin(t * 8) + 1) * 3;
-        pctx.strokeRect(targetX - 16 - boxPulse, targetY - 16 - boxPulse, 32 + boxPulse * 2, 32 + boxPulse * 2);
+        pctx.strokeRect(targetX - halfBox - 4 - boxPulse, targetY - halfBox - 4 - boxPulse, boxSize + 8 + boxPulse * 2, boxSize + 8 + boxPulse * 2);
 
         // Rotating diamond
         pctx.save();
         pctx.translate(targetX, targetY);
         pctx.rotate(t * 3);
-        pctx.strokeRect(-12, -12, 24, 24);
+        pctx.strokeRect(-halfBox * 0.8, -halfBox * 0.8, boxSize * 0.8, boxSize * 0.8);
         pctx.restore();
 
-        // Draw floating practice wooden crate
+        // Draw floating practice wooden crate proportional to preview Steve
         pctx.save();
         pctx.translate(targetX, targetY);
         pctx.rotate(Math.sin(t * 2) * 0.25);
         pctx.fillStyle = '#D2B48C';
-        pctx.fillRect(-12, -12, 24, 24);
+        pctx.fillRect(-halfBox, -halfBox, boxSize, boxSize);
         pctx.strokeStyle = '#8B4513';
-        pctx.lineWidth = 2.5;
-        pctx.strokeRect(-12, -12, 24, 24);
+        pctx.lineWidth = 3.5;
+        pctx.strokeRect(-halfBox, -halfBox, boxSize, boxSize);
         pctx.beginPath();
-        pctx.moveTo(-12, -12); pctx.lineTo(12, 12);
-        pctx.moveTo(12, -12); pctx.lineTo(-12, 12);
+        pctx.moveTo(-halfBox, -halfBox); pctx.lineTo(halfBox, halfBox);
+        pctx.moveTo(halfBox, -halfBox); pctx.lineTo(-halfBox, halfBox);
         pctx.stroke();
         pctx.restore();
 
