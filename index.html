@@ -163,8 +163,11 @@
         <div id="ui-layer">
             <!-- Title Screen -->
             <div id="title-screen">
-                <!-- Circular Clothing Rack Button in Top-Right -->
-                <div style="position: absolute; top: 22px; right: 26px; z-index: 55;">
+                <!-- Top-Right Action Buttons (Minigames & Customization) -->
+                <div style="position: absolute; top: 22px; right: 26px; z-index: 55;" class="flex items-center gap-3">
+                    <button id="btn-open-minigames" onclick="toggleMinigamesScreen(true)" class="h-14 px-6 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 text-purple-200 hover:text-white font-extrabold tracking-widest text-sm flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" title="Minigames">
+                        MINIGAMES
+                    </button>
                     <button id="btn-open-customizer" onclick="toggleCustomizer(true)" class="w-14 h-14 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md" title="Customize Appearance">
                         <!-- Custom vector icon of a clothing rack / clothes rail -->
                         <svg class="w-7 h-7 text-purple-200 hover:text-white transition-colors drop-shadow-[0_0_6px_rgba(192,132,252,0.8)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -198,6 +201,75 @@
             </div>
 
             <button class="play-btn" onclick="startGame()">PLAY</button>
+        </div>
+
+        <!-- Minigames Selection Screen (100% Opaque) -->
+        <div id="minigames-screen" style="display: none; position: absolute; inset: 0; background-color: #0b0f19; opacity: 1; z-index: 65; pointer-events: auto;" class="flex flex-col items-center justify-center p-8">
+            <div class="w-full max-w-4xl flex items-center justify-between border-b border-purple-500/40 pb-4 mb-8">
+                <h2 class="text-4xl font-black text-purple-300 tracking-wider drop-shadow-[0_0_15px_rgba(168,85,247,0.7)]">MINIGAMES</h2>
+                <button onclick="toggleMinigamesScreen(false)" class="px-6 py-2 rounded-full font-bold text-purple-200 border-2 border-purple-400/70 bg-slate-900 hover:bg-purple-700 hover:text-white transition-all cursor-pointer">← BACK TO MENU</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full max-w-4xl">
+                <!-- Slime Smasher Card -->
+                <div onclick="startMinigame('slime_smasher')" class="group cursor-pointer flex flex-col items-center">
+                    <div class="w-full h-52 rounded-2xl border-2 border-emerald-400/70 group-hover:border-emerald-300 bg-gradient-to-b from-sky-900/80 via-emerald-950/90 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_40px_rgba(52,211,153,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                        <!-- Rectangular Illustration Box -->
+                        <svg class="w-44 h-36" viewBox="0 0 200 140">
+                            <!-- Background psychic waves -->
+                            <circle cx="100" cy="80" r="52" fill="none" stroke="#a855f7" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>
+                            <!-- Big Slime -->
+                            <ellipse cx="100" cy="88" rx="46" ry="34" fill="#32cd32" stroke="#15803d" stroke-width="5"/>
+                            <circle cx="84" cy="82" r="5.5" fill="#000"/>
+                            <circle cx="116" cy="82" r="5.5" fill="#000"/>
+                            <circle cx="82" cy="79" r="2.5" fill="#fff"/>
+                            <!-- Small Slimes -->
+                            <ellipse cx="42" cy="102" rx="22" ry="17" fill="#4ade80" stroke="#166534" stroke-width="3.5"/>
+                            <circle cx="36" cy="99" r="3" fill="#000"/>
+                            <circle cx="48" cy="99" r="3" fill="#000"/>
+                            <ellipse cx="158" cy="102" rx="22" ry="17" fill="#4ade80" stroke="#166534" stroke-width="3.5"/>
+                            <circle cx="152" cy="99" r="3" fill="#000"/>
+                            <circle cx="164" cy="99" r="3" fill="#000"/>
+                        </svg>
+                        <div class="absolute bottom-2 right-3 bg-emerald-600/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Endless Survival</div>
+                    </div>
+                    <h3 class="mt-3 text-2xl font-black text-emerald-300 group-hover:text-white tracking-wide transition-colors">SLIME SMASHER</h3>
+                    <p class="text-xs text-slate-400 text-center mt-1 max-w-xs">Slimes spawn faster and faster! Smash as many as you can before you fall.</p>
+                </div>
+
+                <!-- Bombs Away Card -->
+                <div onclick="startMinigame('bombs_away')" class="group cursor-pointer flex flex-col items-center">
+                    <div class="w-full h-52 rounded-2xl border-2 border-orange-400/70 group-hover:border-amber-300 bg-gradient-to-b from-rose-950/80 via-slate-900 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(249,115,22,0.25)] group-hover:shadow-[0_0_40px_rgba(251,146,60,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                        <!-- Rectangular Illustration Box -->
+                        <svg class="w-44 h-36" viewBox="0 0 200 140">
+                            <!-- Explosion burst -->
+                            <polygon points="100,15 112,42 142,28 126,56 155,70 125,80 138,108 108,94 95,122 84,94 54,106 68,78 40,66 70,54 58,26 88,40" fill="#ea580c" opacity="0.45"/>
+                            <!-- Falling Bombs -->
+                            <g transform="translate(62, 68)">
+                                <circle cx="0" cy="0" r="20" fill="#1e293b" stroke="#0f172a" stroke-width="3"/>
+                                <circle cx="-7" cy="-7" r="4" fill="#fff"/>
+                                <path d="M0,-20 Q10,-32 20,-25" fill="none" stroke="#94a3b8" stroke-width="3"/>
+                                <circle cx="20" cy="-25" r="4.5" fill="#facc15"/>
+                            </g>
+                            <g transform="translate(115, 84)">
+                                <circle cx="0" cy="0" r="24" fill="#1e293b" stroke="#0f172a" stroke-width="3.5"/>
+                                <circle cx="-8" cy="-8" r="5" fill="#fff"/>
+                                <path d="M0,-24 Q12,-36 24,-28" fill="none" stroke="#94a3b8" stroke-width="3.5"/>
+                                <circle cx="24" cy="-28" r="5.5" fill="#f97316"/>
+                            </g>
+                            <g transform="translate(148, 46)">
+                                <circle cx="0" cy="0" r="15" fill="#1e293b" stroke="#0f172a" stroke-width="2.5"/>
+                                <circle cx="-5" cy="-5" r="3" fill="#fff"/>
+                                <path d="M0,-15 Q8,-24 15,-19" fill="none" stroke="#94a3b8" stroke-width="2.5"/>
+                                <circle cx="15" cy="-19" r="3.5" fill="#facc15"/>
+                            </g>
+                        </svg>
+                        <div class="absolute bottom-2 right-3 bg-orange-600/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Blast Immunity</div>
+                    </div>
+                    <h3 class="mt-3 text-2xl font-black text-orange-300 group-hover:text-white tracking-wide transition-colors">BOMBS AWAY</h3>
+                    <p class="text-xs text-slate-400 text-center mt-1 max-w-xs">All mobs spawn faster and faster while bombs rain from the sky! You are immune to bomb damage.</p>
+                </div>
+            </div>
         </div>
 
         <!-- Appearance Customization Pop-Up Modal -->
@@ -241,7 +313,10 @@
         <!-- Pause Screen -->
         <div id="pause-screen" class="message-box" style="z-index: 60;">
             <h1 class="text-5xl font-extrabold text-purple-400 mb-6 drop-shadow-md tracking-widest">PAUSED</h1>
-            <button class="play-btn !text-xl !px-8 !py-3 !mt-0" onclick="togglePause()">RESUME</button>
+            <div class="flex flex-col items-center gap-4">
+                <button class="play-btn !text-xl !px-8 !py-3 !mt-0" onclick="togglePause()">RESUME</button>
+                <button class="restart-btn !mt-0 !text-lg !px-8 !py-2.5" onclick="quitToMenu()">QUIT TO MENU</button>
+            </div>
         </div>
 
         <!-- Game Over Screen -->
@@ -264,12 +339,17 @@
 
 <!-- Off-Screen Top-Right Global Pause Button with Custom Drawn Vector Icon -->
 <div id="hud-layer" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 9999; pointer-events: auto;">
-    <button id="pause-btn" class="group bg-slate-900/90 border-2 border-purple-400/80 hover:border-purple-300 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(168,85,247,0.8)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="togglePause()" title="Pause (P or Esc)">
-        <svg class="w-4 h-4 text-purple-300 group-hover:text-white transition-colors drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="5" y="4" width="4.5" height="16" rx="2" />
-            <rect x="14.5" y="4" width="4.5" height="16" rx="2" />
-        </svg>
-    </button>
+    <div class="flex items-center gap-2.5">
+        <button id="pause-btn" class="group bg-slate-900/90 border-2 border-purple-400/80 hover:border-purple-300 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(168,85,247,0.8)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="togglePause()" title="Pause (P or Esc)">
+            <svg class="w-4 h-4 text-purple-300 group-hover:text-white transition-colors drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="5" y="4" width="4.5" height="16" rx="2" />
+                <rect x="14.5" y="4" width="4.5" height="16" rx="2" />
+            </svg>
+        </button>
+        <button id="quit-btn" class="group bg-slate-900/90 border-2 border-red-400/80 hover:border-red-300 px-3.5 h-11 rounded-xl flex items-center justify-center font-extrabold text-xs tracking-wider text-red-300 hover:text-white transition-all duration-200 shadow-[0_0_15px_rgba(239,68,68,0.35)] hover:shadow-[0_0_22px_rgba(239,68,68,0.75)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="quitToMenu()" title="Quit to Main Menu">
+            QUIT
+        </button>
+    </div>
 </div>
 
 <script>
@@ -725,6 +805,14 @@
         }
     }
 
+    function quitToMenu() {
+        document.getElementById('pause-screen').style.display = 'none';
+        if (SoundFX.ctx && SoundFX.ctx.state === 'suspended') {
+            SoundFX.ctx.resume();
+        }
+        resetGame();
+    }
+
     function setDifficulty(diff) {
         currentDifficulty = diff;
         const difficulties = ['easy', 'normal', 'hard'];
@@ -759,6 +847,35 @@
     let breakablePlatforms = [];
     let shakeAmount = 0;
     let livingEnemiesCount = 0;
+
+    // --- MINIGAME STATE ---
+    let currentGameMode = 'normal'; // 'normal', 'slime_smasher', 'bombs_away'
+    let minigameScore = 0;
+    let minigameElapsedTicks = 0;
+    let minigameSpawnTimer = 0;
+    let minigameBombTimer = 0;
+
+    function toggleMinigamesScreen(show) {
+        const screen = document.getElementById('minigames-screen');
+        if (!screen) return;
+        screen.style.display = show ? 'flex' : 'none';
+        if (show) {
+            SoundFX.init();
+        }
+    }
+
+    function startMinigame(mode) {
+        currentGameMode = mode;
+        toggleMinigamesScreen(false);
+        SoundFX.init();
+        SoundFX.startMusic();
+        toggleCustomizer(false);
+        document.getElementById('title-screen').style.display = 'none';
+        document.getElementById('hud-layer').style.display = 'block';
+        gameStarted = true;
+        isPaused = false;
+        initGame();
+    }
 
     // --- APPEARANCE CUSTOMIZATION STATE ---
     const steveAppearance = {
@@ -1422,6 +1539,9 @@
 
     function registerKill(x, y) {
         totalKills++;
+        if (currentGameMode !== 'normal') {
+            minigameScore++;
+        }
         if (playerLevel < 5) {
             currentLevelKills++;
             const req = LEVEL_REQUIREMENTS[playerLevel];
@@ -2231,7 +2351,7 @@
                         const distFromSteve = Vector.magnitude(Vector.sub(b.position, this.body.position));
 
                         if (distFromSteve > maxGrabRadius) {
-                            this.releaseGrip(true);
+                            this.releaseGrip(false);
                             return;
                         }
 
@@ -4833,6 +4953,7 @@
             const radius = 250;
             entities.forEach(e => {
                 if (e !== this && !e.isDying && !e.markedForDeletion) {
+                    if (currentGameMode === 'bombs_away' && e.type === 'player') return;
                     const dist = Vector.magnitude(Vector.sub(e.body.position, pos));
                     if (dist < radius) {
                         e.takeDamage(50, this.body);
@@ -4909,9 +5030,35 @@
             });
 
             const pos = this.body.position;
-            if (pos.y > 900) {
-                Body.setPosition(this.body, { x: pos.x, y: 880 });
-                Body.setVelocity(this.body, { x: 0, y: 0 });
+            let cx = pos.x;
+            let cy = pos.y;
+            let vx = this.body.velocity.x;
+            let vy = this.body.velocity.y;
+            let clamped = false;
+
+            if (cx < 35) {
+                cx = 35;
+                if (vx < 0) vx = -vx * 0.5;
+                clamped = true;
+            } else if (cx > 1405) {
+                cx = 1405;
+                if (vx > 0) vx = -vx * 0.5;
+                clamped = true;
+            }
+
+            if (cy < 35) {
+                cy = 35;
+                if (vy < 0) vy = -vy * 0.5;
+                clamped = true;
+            } else if (cy > 875) {
+                cy = 875;
+                if (vy > 0) vy = 0;
+                clamped = true;
+            }
+
+            if (clamped) {
+                Body.setPosition(this.body, { x: cx, y: cy });
+                Body.setVelocity(this.body, { x: vx, y: vy });
             }
         }
 
@@ -5000,10 +5147,14 @@
         wave = 1;
         playerDeathFade = 0;
         mouse.isDown = false;
-        playerLevel = 1;
+        playerLevel = currentGameMode !== 'normal' ? 5 : 1;
         currentLevelKills = 0;
         totalKills = 0;
         levelUpPopupTimer = 0;
+        minigameScore = 0;
+        minigameElapsedTicks = 0;
+        minigameSpawnTimer = 0;
+        minigameBombTimer = 0;
         document.getElementById('game-over-box').style.display = 'none';
 
         const ground = Bodies.rectangle(720, 930, 1440, 60, { isStatic: true, render: { fillStyle: '#32CD32' } });
@@ -5033,7 +5184,92 @@
         player = new Player(720, 300);
 
         if (gameStarted) {
-            prepareWave();
+            if (currentGameMode === 'normal') {
+                prepareWave();
+            } else {
+                isWavePendingSpawn = false;
+                waveBannerTimer = WAVE_BANNER_DURATION + 45;
+                SoundFX.playWaveStart();
+            }
+        }
+    }
+
+    function updateMinigameSpawns() {
+        minigameElapsedTicks++;
+        minigameSpawnTimer++;
+
+        // Spawn a healing heart every 30 seconds (1800 ticks at 60fps)
+        if (minigameElapsedTicks > 0 && minigameElapsedTicks % 1800 === 0) {
+            const heartX = 720 + (Math.random() - 0.5) * 320;
+            new HealingHeart(heartX, 360);
+        }
+
+        const safeSpawnHeights = [830, 580];
+
+        if (currentGameMode === 'slime_smasher') {
+            const spawnInterval = Math.max(25, Math.floor(120 - minigameElapsedTicks / 45));
+            if (minigameSpawnTimer >= spawnInterval) {
+                minigameSpawnTimer = 0;
+                const spawnY = safeSpawnHeights[Math.floor(Math.random() * safeSpawnHeights.length)];
+                const fromLeft = Math.random() < 0.5;
+                const x = fromLeft ? -50 : 1490;
+                let tier = 0;
+                if (minigameElapsedTicks > 1800 && Math.random() < 0.25) tier = 1;
+                if (minigameElapsedTicks > 3600 && Math.random() < 0.12) tier = 2;
+                const mob = new Slime(x, spawnY, tier);
+                mob.isEntering = true;
+                mob.spawnGraceTimer = 120;
+                const dir = fromLeft ? 1 : -1;
+                mob.dir = dir;
+                Matter.Body.setVelocity(mob.body, { x: dir * 3.5, y: -0.5 });
+            }
+        } else if (currentGameMode === 'bombs_away') {
+            // Fast mob spawning right from the start
+            const fastSpawnInterval = Math.max(12, Math.floor(42 - minigameElapsedTicks / 60));
+            if (minigameSpawnTimer >= fastSpawnInterval) {
+                minigameSpawnTimer = 0;
+                const spawnY = safeSpawnHeights[Math.floor(Math.random() * safeSpawnHeights.length)];
+                const fromLeft = Math.random() < 0.5;
+                const x = fromLeft ? -50 : 1490;
+                const dir = fromLeft ? 1 : -1;
+
+                const roll = Math.random();
+                let mob;
+                if (roll < 0.28) {
+                    mob = new Slime(x, spawnY, Math.random() < 0.25 ? 1 : 0);
+                    mob.dir = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 3.5, y: -0.5 });
+                } else if (roll < 0.56) {
+                    mob = new Zombie(x, spawnY);
+                    mob.dir = dir;
+                    mob.facing = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 2.2, y: -0.5 });
+                } else if (roll < 0.76) {
+                    mob = new Skeleton(x, spawnY);
+                    mob.dir = dir;
+                    mob.facing = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 2.4, y: -0.5 });
+                } else if (roll < 0.90) {
+                    mob = new Maw(x, spawnY);
+                    mob.facing = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 2.8, y: -0.5 });
+                } else {
+                    mob = new Golem(fromLeft ? -60 : 1500, 830);
+                    mob.dir = dir;
+                    mob.facing = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 1.5, y: -0.5 });
+                }
+                mob.isEntering = true;
+                mob.spawnGraceTimer = 120;
+            }
+
+            // Steady 2 bombs per second (every 30 ticks at 60fps) from the sky
+            minigameBombTimer++;
+            if (minigameBombTimer >= 30) {
+                minigameBombTimer = 0;
+                const bx = 90 + Math.random() * 1260;
+                new Bomb(bx, -60);
+            }
         }
     }
 
@@ -5063,9 +5299,11 @@
     }
 
     function startGame() {
+        currentGameMode = 'normal';
         SoundFX.init();
         SoundFX.startMusic();
         toggleCustomizer(false);
+        toggleMinigamesScreen(false);
         document.getElementById('title-screen').style.display = 'none';
         document.getElementById('hud-layer').style.display = 'block';
         gameStarted = true;
@@ -5074,10 +5312,13 @@
     }
 
     function resetGame() {
+        currentGameMode = 'normal';
         document.getElementById('game-over-box').style.display = 'none';
+        document.getElementById('pause-screen').style.display = 'none';
         document.getElementById('hud-layer').style.display = 'none';
         document.getElementById('title-screen').style.display = 'flex';
         toggleCustomizer(false);
+        toggleMinigamesScreen(false);
         gameStarted = false;
         isPaused = false;
         SoundFX.stopMusic();
@@ -5480,7 +5721,6 @@
                     player.takeDamage(dmg, entA.body);
                     applyPlayerHurtKnockback(entA.body);
                 }
-                if (entA.tier === 0) entA.explode();
             }
             if (entB.type === 'slime' && entA.type === 'player' && isStart) {
                 if (player.invulnerableTimer <= 0) {
@@ -5488,7 +5728,6 @@
                     player.takeDamage(dmg, entB.body);
                     applyPlayerHurtKnockback(entB.body);
                 }
-                if (entB.tier === 0) entB.explode();
             }
             
             const relSpeed = Vector.magnitude(Vector.sub(bodyA.velocity, bodyB.velocity));
@@ -5951,7 +6190,11 @@
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
         ctx.shadowBlur = 12;
-        ctx.fillText(`WAVE ${wave}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
+        if (currentGameMode === 'normal') {
+            ctx.fillText(`WAVE ${wave}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
+        } else {
+            ctx.fillText(`SCORE: ${minigameScore}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
+        }
 
         ctx.shadowBlur = 0;
         ctx.font = 'bold 22px Inter';
@@ -5962,23 +6205,23 @@
 
         if (waveBannerTimer > 0) {
             waveBannerTimer--;
-            const progress = (WAVE_BANNER_DURATION - waveBannerTimer) / WAVE_BANNER_DURATION;
+            const totalDuration = currentGameMode === 'normal' ? WAVE_BANNER_DURATION : (WAVE_BANNER_DURATION + 45);
+            const progress = (totalDuration - waveBannerTimer) / totalDuration;
             let alpha = 0;
 
-            if (progress < 0.2) {
-                alpha = progress / 0.2;
-            } else if (progress < 0.7) {
+            if (progress < 0.15) {
+                alpha = progress / 0.15;
+            } else if (progress < 0.75) {
                 alpha = 1.0;
             } else {
-                alpha = Math.max(0, (1.0 - progress) / 0.3);
+                alpha = Math.max(0, (1.0 - progress) / 0.25);
             }
 
-            if (waveBannerTimer === 0 && isWavePendingSpawn) {
+            if (currentGameMode === 'normal' && waveBannerTimer === 0 && isWavePendingSpawn) {
                 spawnWave();
             }
 
-            const scale = 1.0 + (1.0 - progress) * 0.15;
-            const currentCfg = WAVE_CONFIGS[wave] || { title: "ENDLESS HORDE" };
+            const scale = 1.0 + (1.0 - progress) * 0.12;
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2 - 40);
@@ -5987,25 +6230,77 @@
             ctx.textBaseline = 'middle';
             ctx.globalAlpha = alpha;
 
-            ctx.shadowColor = '#a020f0';
-            ctx.shadowBlur = 35;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-            ctx.beginPath();
-            ctx.roundRect(-290, -65, 580, 130, 24);
-            ctx.fill();
+            if (currentGameMode === 'normal') {
+                const currentCfg = WAVE_CONFIGS[wave] || { title: "ENDLESS HORDE" };
 
-            ctx.strokeStyle = '#b946ff';
-            ctx.lineWidth = 4;
-            ctx.stroke();
+                ctx.shadowColor = '#a020f0';
+                ctx.shadowBlur = 35;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                ctx.beginPath();
+                ctx.roundRect(-290, -65, 580, 130, 24);
+                ctx.fill();
 
-            ctx.font = '900 64px Inter';
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(`WAVE ${wave}`, 0, -8);
+                ctx.strokeStyle = '#b946ff';
+                ctx.lineWidth = 4;
+                ctx.stroke();
 
-            ctx.font = '700 22px Inter';
-            ctx.fillStyle = '#e9d5ff';
-            ctx.shadowBlur = 10;
-            ctx.fillText(currentCfg.title || 'SURVIVE THE HORDE', 0, 36);
+                ctx.font = '900 64px Inter';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`WAVE ${wave}`, 0, -8);
+
+                ctx.font = '700 22px Inter';
+                ctx.fillStyle = '#e9d5ff';
+                ctx.shadowBlur = 10;
+                ctx.fillText(currentCfg.title || 'SURVIVE THE HORDE', 0, 36);
+            } else if (currentGameMode === 'slime_smasher') {
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = 35;
+                ctx.fillStyle = 'rgba(6, 24, 18, 0.82)';
+                ctx.beginPath();
+                ctx.roundRect(-390, -82, 780, 164, 24);
+                ctx.fill();
+
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.font = '900 52px Inter';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('SLIME SMASHER', 0, -28);
+
+                ctx.font = '700 20px Inter';
+                ctx.fillStyle = '#a7f3d0';
+                ctx.shadowBlur = 8;
+                ctx.fillText('Slimes spawn faster & faster! Fling them into each other or out of the arena.', 0, 16);
+
+                ctx.font = '600 17px Inter';
+                ctx.fillStyle = '#fef08a';
+                ctx.fillText('Every kill increases your Score • Hearts spawn every 30s!', 0, 48);
+            } else if (currentGameMode === 'bombs_away') {
+                ctx.shadowColor = '#f97316';
+                ctx.shadowBlur = 35;
+                ctx.fillStyle = 'rgba(28, 12, 6, 0.82)';
+                ctx.beginPath();
+                ctx.roundRect(-410, -82, 820, 164, 24);
+                ctx.fill();
+
+                ctx.strokeStyle = '#fb923c';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.font = '900 52px Inter';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('BOMBS AWAY', 0, -28);
+
+                ctx.font = '700 20px Inter';
+                ctx.fillStyle = '#fed7aa';
+                ctx.shadowBlur = 8;
+                ctx.fillText('Bombs rain from the sky & mobs swarm fast! Grab & slam bombs to detonate.', 0, 16);
+
+                ctx.font = '600 17px Inter';
+                ctx.fillStyle = '#fef08a';
+                ctx.fillText('You are IMMUNE to bomb blasts • Rack up the highest Kill Score!', 0, 48);
+            }
 
             ctx.restore();
         }
@@ -6066,23 +6361,27 @@
 
                 livingEnemiesCount = enemyCount;
 
-                if (livingEnemiesCount === 0 && !isWavePendingSpawn) {
-                    waveTimer++;
-                    if (waveTimer === 1) {
-                        if (wave % 3 === 0 && wave !== 15) {
-                            const heartX = 720 + (Math.random() - 0.5) * 160;
-                            new HealingHeart(heartX, 360);
+                if (currentGameMode !== 'normal') {
+                    updateMinigameSpawns();
+                } else {
+                    if (livingEnemiesCount === 0 && !isWavePendingSpawn) {
+                        waveTimer++;
+                        if (waveTimer === 1) {
+                            if (wave % 3 === 0 && wave !== 15) {
+                                const heartX = 720 + (Math.random() - 0.5) * 160;
+                                new HealingHeart(heartX, 360);
+                            }
                         }
-                    }
-                    if (waveTimer > 90) {
-                        wave++;
-                        if (wave === 16) {
-                            restoreBrokenPlatforms();
+                        if (waveTimer > 90) {
+                            wave++;
+                            if (wave === 16) {
+                                restoreBrokenPlatforms();
+                            }
+                            prepareWave();
                         }
-                        prepareWave();
+                    } else if (livingEnemiesCount > 0) {
+                        waveTimer = 0;
                     }
-                } else if (livingEnemiesCount > 0) {
-                    waveTimer = 0;
                 }
             }
         }
@@ -6271,7 +6570,14 @@
             
             if (playerDeathFade >= 0.65) {
                 document.getElementById('game-over-box').style.display = 'block';
-                document.getElementById('wave-reached').innerText = `You reached Wave ${finalWaveReached}`;
+                const goDiffSelector = document.getElementById('go-difficulty-selector');
+                if (currentGameMode === 'normal') {
+                    if (goDiffSelector) goDiffSelector.style.display = 'flex';
+                    document.getElementById('wave-reached').innerText = `You reached Wave ${finalWaveReached}`;
+                } else {
+                    if (goDiffSelector) goDiffSelector.style.display = 'none';
+                    document.getElementById('wave-reached').innerText = `Score: ${minigameScore}`;
+                }
             }
         }
 
