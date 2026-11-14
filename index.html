@@ -874,7 +874,7 @@
             // Left arrow button
             const leftBtn = document.createElement('button');
             leftBtn.className = 'w-7 h-7 rounded-md bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/40 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer shrink-0 active:scale-95';
-            leftBtn.textContent = '◀';
+            leftBtn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
             leftBtn.onclick = () => stepAppearance(cat.id, -1);
 
             // Active choice display
@@ -885,7 +885,7 @@
             // Right arrow button
             const rightBtn = document.createElement('button');
             rightBtn.className = 'w-7 h-7 rounded-md bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/40 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer shrink-0 active:scale-95';
-            rightBtn.textContent = '▶';
+            rightBtn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
             rightBtn.onclick = () => stepAppearance(cat.id, 1);
 
             controlRow.appendChild(leftBtn);
