@@ -29,12 +29,14 @@
             justify-content: center;
             align-items: center;
             touch-action: none;
+            overflow: hidden;
         }
         #game-wrapper {
             position: relative;
-            aspect-ratio: 1440 / 960;
-            max-width: 100%;
-            max-height: 100%;
+            width: 1440px;
+            height: 960px;
+            flex-shrink: 0;
+            transform-origin: center center;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -165,7 +167,7 @@
             <div id="title-screen">
                 <!-- Top-Right Action Buttons (Minigames & Customization) -->
                 <div style="position: absolute; top: 22px; right: 26px; z-index: 55;" class="flex items-center gap-3">
-                    <button id="btn-open-minigames" onclick="toggleMinigamesScreen(true)" class="h-14 px-6 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 text-purple-200 hover:text-white font-extrabold tracking-widest text-sm flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" title="Minigames">
+                    <button id="btn-open-minigames" onclick="toggleMinigamesScreen(true)" class="h-14 px-7 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 text-purple-200 hover:text-white font-extrabold tracking-widest text-lg flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" title="Minigames">
                         MINIGAMES
                     </button>
                     <button id="btn-open-customizer" onclick="toggleCustomizer(true)" class="w-14 h-14 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md" title="Customize Appearance">
@@ -189,15 +191,15 @@
                     </button>
                 </div>
 
-                <h1 class="text-7xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-3">PSYCHIC STEVE</h1>
-                <p class="text-lg text-purple-200 mb-1 font-medium">A / D or Arrows to Move • W or Up to Jump</p>
-                <p class="text-xs text-purple-300 mb-4 tracking-wide">HOLD Left Mouse to channel psychic waves • Release to throw</p>
+                <h1 class="text-8xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-4">PSYCHIC STEVE</h1>
+                <p class="text-2xl text-purple-200 mb-2 font-semibold">A / D or Arrows to Move • W or Up to Jump</p>
+                <p class="text-lg text-purple-300 mb-6 tracking-wide font-medium">HOLD Left Mouse to channel psychic waves • Release to throw</p>
                 
                 <!-- Difficulty Selector -->
-            <div class="flex gap-4 mb-3" id="difficulty-selector">
-                <button id="btn-diff-easy" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
-                <button id="btn-diff-normal" class="px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
-                <button id="btn-diff-hard" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
+            <div class="flex gap-5 mb-4" id="difficulty-selector">
+                <button id="btn-diff-easy" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
+                <button id="btn-diff-normal" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
+                <button id="btn-diff-hard" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
             </div>
 
             <button class="play-btn" onclick="startGame()">PLAY</button>
@@ -205,17 +207,17 @@
 
         <!-- Minigames Selection Screen (100% Opaque) -->
         <div id="minigames-screen" style="display: none; position: absolute; inset: 0; background-color: #0b0f19; opacity: 1; z-index: 65; pointer-events: auto;" class="flex flex-col items-center justify-center p-8">
-            <div class="w-full max-w-4xl flex items-center justify-between border-b border-purple-500/40 pb-4 mb-8">
-                <h2 class="text-4xl font-black text-purple-300 tracking-wider drop-shadow-[0_0_15px_rgba(168,85,247,0.7)]">MINIGAMES</h2>
-                <button onclick="toggleMinigamesScreen(false)" class="px-6 py-2 rounded-full font-bold text-purple-200 border-2 border-purple-400/70 bg-slate-900 hover:bg-purple-700 hover:text-white transition-all cursor-pointer">← BACK TO MENU</button>
+            <div class="w-full max-w-5xl flex items-center justify-between border-b border-purple-500/40 pb-5 mb-10">
+                <h2 class="text-5xl font-black text-purple-300 tracking-wider drop-shadow-[0_0_15px_rgba(168,85,247,0.7)]">MINIGAMES</h2>
+                <button onclick="toggleMinigamesScreen(false)" class="px-7 py-3 rounded-full text-lg font-bold text-purple-200 border-2 border-purple-400/70 bg-slate-900 hover:bg-purple-700 hover:text-white transition-all cursor-pointer">← BACK TO MENU</button>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full max-w-4xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-10 w-full max-w-5xl">
                 <!-- Slime Smasher Card -->
                 <div onclick="startMinigame('slime_smasher')" class="group cursor-pointer flex flex-col items-center">
-                    <div class="w-full h-52 rounded-2xl border-2 border-emerald-400/70 group-hover:border-emerald-300 bg-gradient-to-b from-sky-900/80 via-emerald-950/90 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_40px_rgba(52,211,153,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                    <div class="w-full h-60 rounded-2xl border-2 border-emerald-400/70 group-hover:border-emerald-300 bg-gradient-to-b from-sky-900/80 via-emerald-950/90 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_40px_rgba(52,211,153,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
                         <!-- Rectangular Illustration Box -->
-                        <svg class="w-44 h-36" viewBox="0 0 200 140">
+                        <svg class="w-52 h-44" viewBox="0 0 200 140">
                             <!-- Background psychic waves -->
                             <circle cx="100" cy="80" r="52" fill="none" stroke="#a855f7" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>
                             <!-- Big Slime -->
@@ -231,17 +233,17 @@
                             <circle cx="152" cy="99" r="3" fill="#000"/>
                             <circle cx="164" cy="99" r="3" fill="#000"/>
                         </svg>
-                        <div class="absolute bottom-2 right-3 bg-emerald-600/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Endless Survival</div>
+                        <div class="absolute bottom-3 right-4 bg-emerald-600/90 text-white text-sm font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">Endless Survival</div>
                     </div>
-                    <h3 class="mt-3 text-2xl font-black text-emerald-300 group-hover:text-white tracking-wide transition-colors">SLIME SMASHER</h3>
-                    <p class="text-xs text-slate-400 text-center mt-1 max-w-xs">Slimes spawn faster and faster! Smash as many as you can before you fall.</p>
+                    <h3 class="mt-4 text-3xl font-black text-emerald-300 group-hover:text-white tracking-wide transition-colors">SLIME SMASHER</h3>
+                    <p class="text-lg text-slate-300 text-center mt-2 max-w-md leading-relaxed font-medium">Slimes spawn faster and faster! Smash as many as you can before you fall.</p>
                 </div>
 
                 <!-- Bombs Away Card -->
                 <div onclick="startMinigame('bombs_away')" class="group cursor-pointer flex flex-col items-center">
-                    <div class="w-full h-52 rounded-2xl border-2 border-orange-400/70 group-hover:border-amber-300 bg-gradient-to-b from-rose-950/80 via-slate-900 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(249,115,22,0.25)] group-hover:shadow-[0_0_40px_rgba(251,146,60,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                    <div class="w-full h-60 rounded-2xl border-2 border-orange-400/70 group-hover:border-amber-300 bg-gradient-to-b from-rose-950/80 via-slate-900 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(249,115,22,0.25)] group-hover:shadow-[0_0_40px_rgba(251,146,60,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
                         <!-- Rectangular Illustration Box -->
-                        <svg class="w-44 h-36" viewBox="0 0 200 140">
+                        <svg class="w-52 h-44" viewBox="0 0 200 140">
                             <!-- Explosion burst -->
                             <polygon points="100,15 112,42 142,28 126,56 155,70 125,80 138,108 108,94 95,122 84,94 54,106 68,78 40,66 70,54 58,26 88,40" fill="#ea580c" opacity="0.45"/>
                             <!-- Falling Bombs -->
@@ -264,10 +266,10 @@
                                 <circle cx="15" cy="-19" r="3.5" fill="#facc15"/>
                             </g>
                         </svg>
-                        <div class="absolute bottom-2 right-3 bg-orange-600/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Blast Immunity</div>
+                        <div class="absolute bottom-3 right-4 bg-orange-600/90 text-white text-sm font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">Blast Immunity</div>
                     </div>
-                    <h3 class="mt-3 text-2xl font-black text-orange-300 group-hover:text-white tracking-wide transition-colors">BOMBS AWAY</h3>
-                    <p class="text-xs text-slate-400 text-center mt-1 max-w-xs">All mobs spawn faster and faster while bombs rain from the sky! You are immune to bomb damage.</p>
+                    <h3 class="mt-4 text-3xl font-black text-orange-300 group-hover:text-white tracking-wide transition-colors">BOMBS AWAY</h3>
+                    <p class="text-lg text-slate-300 text-center mt-2 max-w-md leading-relaxed font-medium">Mobs spawn faster and faster while bombs rain from the sky! You are immune to bomb damage.</p>
                 </div>
             </div>
         </div>
@@ -333,26 +335,39 @@
 
                 <button class="restart-btn" onclick="resetGame()">Play Again</button>
             </div>
+
+            <!-- In-Canvas Top-Right Pause & Quit Buttons (Placed cleanly to the left of the Wave/Score box) -->
+            <div id="hud-layer" style="display: none; position: absolute; top: 20px; right: 274px; z-index: 55; pointer-events: auto;">
+                <div class="flex items-center gap-2.5">
+                    <button id="pause-btn" class="group bg-slate-900/90 border-2 border-purple-400/80 hover:border-purple-300 w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(168,85,247,0.8)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="togglePause()" title="Pause (P or Esc)">
+                        <svg class="w-5 h-5 text-purple-300 group-hover:text-white transition-colors drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="5" y="4" width="4.5" height="16" rx="2" />
+                            <rect x="14.5" y="4" width="4.5" height="16" rx="2" />
+                        </svg>
+                    </button>
+                    <button id="quit-btn" class="group bg-slate-900/90 border-2 border-red-400/80 hover:border-red-300 px-4 h-12 rounded-xl flex items-center justify-center font-extrabold text-sm tracking-wider text-red-300 hover:text-white transition-all duration-200 shadow-[0_0_15px_rgba(239,68,68,0.35)] hover:shadow-[0_0_22px_rgba(239,68,68,0.75)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="quitToMenu()" title="Quit to Main Menu">
+                        QUIT
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Off-Screen Top-Right Global Pause Button with Custom Drawn Vector Icon -->
-<div id="hud-layer" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 9999; pointer-events: auto;">
-    <div class="flex items-center gap-2.5">
-        <button id="pause-btn" class="group bg-slate-900/90 border-2 border-purple-400/80 hover:border-purple-300 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(168,85,247,0.8)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="togglePause()" title="Pause (P or Esc)">
-            <svg class="w-4 h-4 text-purple-300 group-hover:text-white transition-colors drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="5" y="4" width="4.5" height="16" rx="2" />
-                <rect x="14.5" y="4" width="4.5" height="16" rx="2" />
-            </svg>
-        </button>
-        <button id="quit-btn" class="group bg-slate-900/90 border-2 border-red-400/80 hover:border-red-300 px-3.5 h-11 rounded-xl flex items-center justify-center font-extrabold text-xs tracking-wider text-red-300 hover:text-white transition-all duration-200 shadow-[0_0_15px_rgba(239,68,68,0.35)] hover:shadow-[0_0_22px_rgba(239,68,68,0.75)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="quitToMenu()" title="Quit to Main Menu">
-            QUIT
-        </button>
-    </div>
-</div>
-
 <script>
+    // --- UNIFORM VIEWPORT SCALING ---
+    function updateViewportScale() {
+        const wrapper = document.getElementById('game-wrapper');
+        if (!wrapper) return;
+        const scaleX = window.innerWidth / 1440;
+        const scaleY = window.innerHeight / 960;
+        const scale = Math.min(scaleX, scaleY);
+        wrapper.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', updateViewportScale);
+    window.addEventListener('orientationchange', updateViewportScale);
+    updateViewportScale();
+
     // --- SYNTHESIZED SOUND EFFECTS & BGM (Web Audio API) ---
     const SoundFX = {
         ctx: null,
@@ -818,7 +833,7 @@
         const difficulties = ['easy', 'normal', 'hard'];
         
         difficulties.forEach(d => {
-            const baseClass = "px-6 py-2 rounded-full font-bold text-white border-2 transition-all ";
+            const baseClass = "px-8 py-3 rounded-full text-xl font-bold text-white border-2 transition-all ";
             let activeClass = "";
             let inactiveClass = "border-gray-500 bg-gray-800 opacity-60 hover:opacity-100";
             
@@ -1688,6 +1703,236 @@
         }
     }
 
+    // --- SMART PLATFORM & OBSTACLE NAVIGATION FOR MOBS ---
+    function getSmartMobMove(mob, pos, halfHeight) {
+        if (!player || player.isDying) {
+            return { dir: mob.dir || mob.facing || 1, shouldJump: false, jumpVx: 0, jumpVy: 0 };
+        }
+
+        const ppos = player.body.position;
+        const platLeft = breakablePlatforms[0];
+        const platMid = breakablePlatforms[1];
+        const platRight = breakablePlatforms[2];
+
+        const leftIntact = platLeft && !platLeft.isBroken;
+        const midIntact = platMid && !platMid.isBroken;
+        const rightIntact = platRight && !platRight.isBroken;
+
+        const footY = pos.y + halfHeight;
+        const pFootY = ppos.y + 60;
+
+        // Classify vertical tier: 0 = Ground (~900), 1 = Side Platforms (~650), 2 = Center Top Platform (~450)
+        const getLevel = (fy, x) => {
+            if (midIntact && fy <= 475 && x >= 490 && x <= 950) return 2;
+            if (fy <= 675 && ((leftIntact && x <= 450) || (rightIntact && x >= 1000))) return 1;
+            return 0;
+        };
+
+        const mobLevel = getLevel(footY, pos.x);
+        const playerLevel = getLevel(pFootY, ppos.x);
+
+        let targetX = ppos.x;
+        let shouldJump = false;
+        let jumpVx = 0;
+        let jumpVy = -19.5;
+        let underCeiling = false;
+
+        if (playerLevel > mobLevel) {
+            if (mobLevel === 0) {
+                // On ground: need to climb to a side platform (or directly if side platforms are broken)
+                let chooseLeft = false;
+                let chooseRight = false;
+
+                if (playerLevel === 1) {
+                    if (ppos.x < 720 && leftIntact) chooseLeft = true;
+                    else if (ppos.x >= 720 && rightIntact) chooseRight = true;
+                }
+
+                if (!chooseLeft && !chooseRight) {
+                    if (leftIntact && rightIntact) {
+                        // Pick whichever side platform launch spot is closer
+                        const distL = Math.abs(pos.x - 595) + Math.abs(ppos.x - 360) * 0.35;
+                        const distR = Math.abs(pos.x - 845) + Math.abs(ppos.x - 1080) * 0.35;
+                        if (distL <= distR) chooseLeft = true;
+                        else chooseRight = true;
+                    } else if (leftIntact) {
+                        chooseLeft = true;
+                    } else if (rightIntact) {
+                        chooseRight = true;
+                    }
+                }
+
+                if (chooseLeft) {
+                    // Left platform inner edge is at x = 420.
+                    // Golems have wider shoulders (105px), so they walk out slightly further (565..635) before launching.
+                    const minOut = mob.type === 'golem' ? 565 : 535;
+                    const maxOut = mob.type === 'golem' ? 635 : 595;
+                    const jumpSpotX = mob.type === 'golem' ? 595 : 560;
+                    if (pos.x < minOut) {
+                        targetX = maxOut - 15;
+                        underCeiling = pos.x < 485;
+                    } else if (pos.x >= minOut && pos.x <= maxOut) {
+                        targetX = 360;
+                        shouldJump = true;
+                        jumpVx = mob.type === 'golem' ? -7.8 : -5.6;
+                        jumpVy = mob.type === 'golem' ? -26.5 : -19.8;
+                    } else {
+                        targetX = jumpSpotX;
+                    }
+                } else if (chooseRight) {
+                    // Right platform inner edge is at x = 1020.
+                    const minOut = mob.type === 'golem' ? 805 : 845;
+                    const maxOut = mob.type === 'golem' ? 875 : 905;
+                    const jumpSpotX = mob.type === 'golem' ? 845 : 880;
+                    if (pos.x > maxOut) {
+                        targetX = minOut + 15;
+                        underCeiling = pos.x > 955;
+                    } else if (pos.x >= minOut && pos.x <= maxOut) {
+                        targetX = 1080;
+                        shouldJump = true;
+                        jumpVx = mob.type === 'golem' ? 7.8 : 5.6;
+                        jumpVy = mob.type === 'golem' ? -26.5 : -19.8;
+                    } else {
+                        targetX = jumpSpotX;
+                    }
+                } else {
+                    // Both side platforms broken: jump from outside center platform's edges (520..920)
+                    const goLeft = Math.abs(pos.x - 360) < Math.abs(pos.x - 1080);
+                    if (goLeft) {
+                        if (pos.x > 390 && pos.x < 920) {
+                            targetX = 350;
+                            underCeiling = pos.x > 490;
+                        } else if (pos.x >= 320 && pos.x <= 390) {
+                            shouldJump = true;
+                            jumpVx = mob.type === 'golem' ? 8.2 : 6.2;
+                            jumpVy = mob.type === 'golem' ? -27.5 : -21.5;
+                        } else targetX = 360;
+                    } else {
+                        if (pos.x > 520 && pos.x < 1050) {
+                            targetX = 1090;
+                            underCeiling = pos.x < 950;
+                        } else if (pos.x >= 1050 && pos.x <= 1120) {
+                            shouldJump = true;
+                            jumpVx = mob.type === 'golem' ? -8.2 : -6.2;
+                            jumpVy = mob.type === 'golem' ? -27.5 : -21.5;
+                        } else targetX = 1080;
+                    }
+                }
+            } else if (mobLevel === 1) {
+                // On a side platform and player is on the top center platform (plat2: x 520..920, y 450)
+                if (pos.x < 720) {
+                    // On left platform: run right to the ledge (x ~ 350..415) and jump right+up onto center platform
+                    targetX = 385;
+                    if (pos.x >= 345 && pos.x <= 420) {
+                        shouldJump = true;
+                        jumpVx = mob.type === 'golem' ? 7.8 : 5.8;
+                        jumpVy = mob.type === 'golem' ? -24.5 : -18.5;
+                    }
+                } else {
+                    // On right platform: run left to the ledge (x ~ 1025..1090) and jump left+up onto center platform
+                    targetX = 1055;
+                    if (pos.x >= 1020 && pos.x <= 1095) {
+                        shouldJump = true;
+                        jumpVx = mob.type === 'golem' ? -7.8 : -5.8;
+                        jumpVy = mob.type === 'golem' ? -24.5 : -18.5;
+                    }
+                }
+            }
+        } else if (playerLevel < mobLevel) {
+            // Player is below the mob's current platform: walk off the platform ledge toward the player!
+            if (mobLevel === 1) {
+                if (pos.x < 720) {
+                    // On left platform (ends at x = 420): walk right off the ledge
+                    targetX = 485;
+                } else {
+                    // On right platform (starts at x = 1020): walk left off the ledge
+                    targetX = 955;
+                }
+            } else if (mobLevel === 2) {
+                // On top center platform (x = 520..920): walk off whichever side is closer to Steve
+                if (ppos.x < 720) {
+                    targetX = 460;
+                } else {
+                    targetX = 980;
+                }
+            }
+        } else if (playerLevel === 1 && mobLevel === 1) {
+            // Both at level 1, check if on opposite side platforms
+            if (pos.x < 500 && ppos.x > 940) {
+                targetX = 600;
+                if (midIntact && pos.x >= 370 && pos.x <= 425) {
+                    shouldJump = true;
+                    jumpVx = 5.8;
+                    jumpVy = -18.5;
+                }
+            } else if (pos.x > 940 && ppos.x < 500) {
+                targetX = 840;
+                if (midIntact && pos.x >= 1015 && pos.x <= 1070) {
+                    shouldJump = true;
+                    jumpVx = -5.8;
+                    jumpVy = -18.5;
+                }
+            }
+        } else if (mobLevel === playerLevel && ppos.y < pos.y - 85 && Math.abs(ppos.x - pos.x) < 110 && !underCeiling) {
+            // Player is jumping directly above on the same tier
+            shouldJump = true;
+            jumpVx = (ppos.x >= pos.x ? 1 : -1) * 3.4;
+            jumpVy = -13.5;
+        }
+
+        // Keep mobs on their current platform when on the same tier as the player (so they don't walk off the ledge)
+        if (mobLevel === playerLevel) {
+            const margin = mob.type === 'golem' ? 52 : 30;
+            if (mobLevel === 1) {
+                if (pos.x < 720 && leftIntact) {
+                    targetX = Math.max(80, Math.min(420 - margin, targetX));
+                } else if (pos.x >= 720 && rightIntact) {
+                    targetX = Math.max(1020 + margin, Math.min(1360, targetX));
+                }
+            } else if (mobLevel === 2 && midIntact) {
+                targetX = Math.max(520 + margin, Math.min(920 - margin, targetX));
+            }
+        }
+
+        const dir = targetX >= pos.x ? 1 : -1;
+
+        // Check for boxes, boulders, or bombs blocking horizontal path and jump over them
+        if (!shouldJump && !underCeiling) {
+            for (let i = 0; i < entities.length; i++) {
+                const e = entities[i];
+                if (e === mob || e === player || e.isDying || e.markedForDeletion) continue;
+                if (e.type === 'box' || e.type === 'boulder' || e.type === 'bomb') {
+                    const ex = e.body.position.x;
+                    const ey = e.body.position.y;
+                    const dx = ex - pos.x;
+                    const dy = Math.abs(ey - pos.y);
+                    if (Math.sign(dx) === dir && Math.abs(dx) < 85 && dy < halfHeight + 30) {
+                        shouldJump = true;
+                        jumpVx = dir * 3.8;
+                        jumpVy = -13.5;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Unstick jump if horizontal velocity is stalled while trying to move inside the arena (and not under a low ceiling)
+        if (!shouldJump && !underCeiling && pos.x > 90 && pos.x < 1350 && Math.abs(mob.body.velocity.x) < 0.25) {
+            mob.stuckTicks = (mob.stuckTicks || 0) + 1;
+            const stuckThreshold = mob.type === 'golem' ? 50 : 35;
+            if (mob.stuckTicks > stuckThreshold) {
+                mob.stuckTicks = 0;
+                shouldJump = true;
+                jumpVx = dir * (mob.type === 'golem' ? 5.2 : 4.0);
+                jumpVy = mob.type === 'golem' ? -17.5 : -14.0;
+            }
+        } else {
+            mob.stuckTicks = 0;
+        }
+
+        return { dir, shouldJump, jumpVx, jumpVy, underCeiling };
+    }
+
     class Entity {
         constructor(body, hp, type, weight = 1.0) {
             this.body = body;
@@ -2278,6 +2523,11 @@
             if (clamped) Body.setPosition(this.body, { x: currentX, y: currentY });
 
             const maxGrabRadius = 450;
+            if (isMobileDevice && psychicStick.active) {
+                const targetDistance = psychicStick.distanceRatio * maxGrabRadius;
+                mouse.x = Math.max(20, Math.min(1420, this.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
+                mouse.y = Math.max(20, Math.min(900, this.body.position.y + Math.sin(psychicStick.angle) * targetDistance));
+            }
             if (mouse.isDown) {
                 if (!this.grabbedEntity) {
                     let bestCandidate = null;
@@ -2726,6 +2976,13 @@
                 }
             }
 
+            if (this.navJumpTimer > 0) {
+                this.navJumpTimer--;
+                if (!this.body.isThrown && !(player && player.grabbedEntity === this)) {
+                    Body.setVelocity(this.body, { x: this.navJumpVx, y: this.body.velocity.y });
+                }
+            }
+
             const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
 
             // While in mid-air above Steve: perform an aggressive downward body slam
@@ -2742,18 +2999,31 @@
 
             if (this.jumpCooldown > 0) this.jumpCooldown--;
 
-            // Aggressive player-tracking behavior
+            // Smart platform & obstacle navigation + aggressive player-tracking behavior
             if (player && !player.isDying) {
                 const px = player.body.position.x;
                 const py = player.body.position.y;
                 const dx = px - pos.x;
                 const dy = py - pos.y;
                 const distToSteve = Math.hypot(dx, dy);
-                const targetDir = dx > 0 ? 1 : -1;
-                this.dir = targetDir;
 
-                // Close-range pounce attack preparation
-                if (distToSteve < 360 && this.jumpCooldown <= 0) {
+                const nav = getSmartMobMove(this, pos, this.radius);
+                this.dir = nav.dir;
+
+                // Execute smart platform ledge jump or obstacle hop
+                if (nav.shouldJump && this.jumpCooldown <= 0) {
+                    this.pounceTimer = 0;
+                    this.jumpCooldown = 32 + Math.floor(Math.random() * 15);
+                    this.navJumpVx = nav.jumpVx;
+                    this.navJumpTimer = 26;
+                    Body.setVelocity(this.body, { x: nav.jumpVx, y: nav.jumpVy });
+                    SoundFX.playJump();
+                    return;
+                }
+
+                // Close-range direct pounce attack when on the same level
+                const sameLevel = Math.abs(py - pos.y) < 110;
+                if (sameLevel && !nav.underCeiling && distToSteve < 340 && this.jumpCooldown <= 0) {
                     this.pounceTimer++;
 
                     // Quick squash telegraph (10 frames) before launching into Steve
@@ -2761,10 +3031,9 @@
                         this.pounceTimer = 0;
                         this.jumpCooldown = 40 + Math.floor(Math.random() * 25);
 
+                        const targetDir = dx > 0 ? 1 : -1;
                         const pounceVx = targetDir * (6.5 + Math.min(distToSteve * 0.015, 4.5));
-                        // High vertical launch if Steve is above on a platform, otherwise aggressive low arc
-                        const isElevated = py < pos.y - 60;
-                        const pounceVy = isElevated ? -16.5 : -11.0;
+                        const pounceVy = (py < pos.y - 50) ? -16.5 : -11.0;
 
                         Body.setVelocity(this.body, { x: pounceVx, y: pounceVy });
                         SoundFX.playJump();
@@ -2778,15 +3047,14 @@
                     this.pounceTimer = 0;
                 }
 
-                // Frequent forward hops toward Steve while pursuing
-                if (this.jumpCooldown <= 0 && Math.random() < 0.045) {
+                // Frequent forward hops toward target while pursuing (disabled while walking out from under a platform)
+                if (!nav.underCeiling && this.jumpCooldown <= 0 && Math.random() < 0.04) {
                     this.jumpCooldown = 35 + Math.floor(Math.random() * 20);
-                    const hopVy = (py < pos.y - 70) ? -15.5 : -9.5;
-                    Body.setVelocity(this.body, { x: targetDir * 5.2, y: hopVy });
+                    Body.setVelocity(this.body, { x: this.dir * 5.2, y: -9.5 });
                 }
 
-                const pursuitSpeed = Math.max(2.4, 4.2 - this.tier * 0.4);
-                Body.setVelocity(this.body, { x: targetDir * pursuitSpeed, y: this.body.velocity.y });
+                const pursuitSpeed = Math.max(2.6, 4.4 - this.tier * 0.4);
+                Body.setVelocity(this.body, { x: this.dir * pursuitSpeed, y: this.body.velocity.y });
             } else {
                 // Idle wander fallback if no player
                 if (pos.x < 60) this.dir = 1;
@@ -2885,6 +3153,7 @@
             this.animTimer = 0;
             this.facing = 1;
             this.enteringTimer = 0;
+            this.jumpCooldown = Math.floor(Math.random() * 25);
         }
 
         update() {
@@ -2911,15 +3180,32 @@
                 }
             }
 
+            if (this.jumpCooldown > 0) this.jumpCooldown--;
+
+            if (this.navJumpTimer > 0) {
+                this.navJumpTimer--;
+                if (!this.body.isThrown && !(player && player.grabbedEntity === this)) {
+                    Body.setVelocity(this.body, { x: this.navJumpVx, y: this.body.velocity.y });
+                }
+            }
+
             const isMidAir = Math.abs(this.body.velocity.y) > 1.5 || this.body.isThrown || (player && player.grabbedEntity === this);
             if (isMidAir) return;
             if (!player || player.isDying) return;
 
-            const px = player.body.position.x;
-            const dir = px > pos.x ? 1 : -1;
-            this.facing = dir;
+            const nav = getSmartMobMove(this, pos, 56);
+            this.facing = nav.dir;
+
+            if (nav.shouldJump && this.jumpCooldown <= 0) {
+                this.jumpCooldown = 55 + Math.floor(Math.random() * 20);
+                this.navJumpVx = nav.jumpVx;
+                this.navJumpTimer = 22;
+                Body.setVelocity(this.body, { x: nav.jumpVx, y: nav.jumpVy });
+                SoundFX.playJump();
+                return;
+            }
             
-            Body.setVelocity(this.body, { x: dir * 2.2, y: this.body.velocity.y });
+            Body.setVelocity(this.body, { x: this.facing * 2.35, y: this.body.velocity.y });
             this.animTimer += 0.1;
         }
 
@@ -2987,7 +3273,12 @@
             this.searchTimer = 0;
             this.telegraphAngle = 0;
             this.hasClearLine = false;
-            this.jumpCooldown = 0;
+            this.jumpCooldown = Math.floor(Math.random() * 40);
+            this.navJumpTimer = 0;
+            this.navJumpVx = 0;
+            this.jumpSquatTimer = 0;
+            this.pendingJumpVx = 0;
+            this.pendingJumpVy = 0;
         }
 
         hasClearThrowLine(fromPos, toPos) {
@@ -3035,26 +3326,89 @@
                 }
             }
 
+            if (this.jumpCooldown > 0) this.jumpCooldown--;
+
+            // Maintain horizontal momentum during a heavy platform leap
+            if (this.navJumpTimer > 0) {
+                this.navJumpTimer--;
+                if (!this.body.isThrown && !(player && player.grabbedEntity === this)) {
+                    // Stop carrying horizontal jump momentum once above the target platform surface and descending onto it
+                    const footY = pos.y + 75;
+                    const overLeftPlat = breakablePlatforms[0] && !breakablePlatforms[0].isBroken && pos.x <= 390 && footY <= 645;
+                    const overRightPlat = breakablePlatforms[2] && !breakablePlatforms[2].isBroken && pos.x >= 1050 && footY <= 645;
+                    const overMidPlat = breakablePlatforms[1] && !breakablePlatforms[1].isBroken && pos.x >= 560 && pos.x <= 880 && footY <= 445;
+
+                    if (this.body.velocity.y > 0 && (overLeftPlat || overRightPlat || overMidPlat)) {
+                        this.navJumpTimer = 0;
+                        Body.setVelocity(this.body, { x: this.body.velocity.x * 0.25, y: this.body.velocity.y });
+                    } else {
+                        Body.setVelocity(this.body, { x: this.navJumpVx, y: this.body.velocity.y });
+                    }
+                }
+            }
+
+            // Heavy squat windup before launching into a powerful jump (processed before airborne check so it never cancels into a double squat)
+            if (this.jumpSquatTimer > 0) {
+                if (player && player.grabbedEntity === this) {
+                    this.jumpSquatTimer = 0;
+                } else {
+                    this.jumpSquatTimer--;
+                    Body.setVelocity(this.body, { x: 0, y: Math.max(0, this.body.velocity.y) });
+                    if (this.heldMob && !this.heldMob.isDying && !this.heldMob.markedForDeletion) {
+                        const launchOrigin = { x: pos.x + this.facing * 22, y: pos.y - 100 };
+                        Body.setPosition(this.heldMob.body, launchOrigin);
+                        Body.setVelocity(this.heldMob.body, { x: 0, y: 0 });
+                    }
+                    if (this.jumpSquatTimer === 0) {
+                        this.jumpCooldown = 115 + Math.floor(Math.random() * 35);
+                        this.navJumpVx = this.pendingJumpVx;
+                        this.navJumpTimer = 38;
+                        Body.setVelocity(this.body, { x: this.pendingJumpVx, y: this.pendingJumpVy });
+                        SoundFX.playHit();
+                        SoundFX.playJump();
+                        shakeAmount = Math.max(shakeAmount, 14);
+                        createExplosion(pos.x, pos.y + 72, '#78350f', 16, 'shard');
+                    }
+                    return;
+                }
+            }
+
             const isAirborne = Math.abs(this.body.velocity.y) > 2.0 || (player && player.grabbedEntity === this);
-            if (isAirborne && (player && player.grabbedEntity === this)) {
-                if (this.heldMob) {
-                    this.heldMob = null;
-                    this.windupTimer = 0;
+            if (isAirborne) {
+                if (player && player.grabbedEntity === this) {
+                    if (this.heldMob) {
+                        this.heldMob = null;
+                        this.windupTimer = 0;
+                    }
+                    return;
+                }
+                // Keep updating held boulder position if Golem leaps while carrying a boulder
+                if (this.heldMob && !this.heldMob.isDying && !this.heldMob.markedForDeletion) {
+                    const launchOrigin = { x: pos.x + this.facing * 22, y: pos.y - 105 };
+                    Body.setPosition(this.heldMob.body, launchOrigin);
+                    Body.setVelocity(this.heldMob.body, { x: 0, y: 0 });
                 }
                 return;
             }
 
             if (!player || player.isDying) return;
 
-            const px = player.body.position.x;
-            const py = player.body.position.y;
-            const dir = px > pos.x ? 1 : -1;
+            const nav = getSmartMobMove(this, pos, 75);
+            const dir = nav.dir;
             this.facing = dir;
 
             if (this.throwCooldown > 0) this.throwCooldown--;
-            if (this.jumpCooldown > 0) this.jumpCooldown--;
 
-            let moveSpeed = 1.8;
+            // Trigger heavy squat windup when at the platform launch point
+            if (nav.shouldJump && this.jumpCooldown <= 0) {
+                this.jumpSquatTimer = 14;
+                this.pendingJumpVx = nav.jumpVx;
+                this.pendingJumpVy = nav.jumpVy;
+                Body.setVelocity(this.body, { x: 0, y: 0 });
+                return;
+            }
+
+            let moveSpeed = 1.25;
 
             // When holding an item or boulder to throw
             if (this.heldMob) {
@@ -3081,31 +3435,14 @@
                     this.hasClearLine = losCheck.clear;
 
                     if (!this.hasClearLine) {
-                        // OBSTRUCTED: Refuse to throw through the wall/platform!
+                        // OBSTRUCTED: Refuse to throw through the wall/platform and use smart navigation to reposition!
                         this.windupTimer = Math.min(10, this.windupTimer);
-                        moveSpeed = 3.2;
-
-                        if (losCheck.blockedPlat) {
-                            const bplat = losCheck.blockedPlat;
-                            const leftEdge = bplat.position.x - bplat.origW / 2;
-                            const rightEdge = bplat.position.x + bplat.origW / 2;
-                            const distToLeft = Math.abs(pos.x - leftEdge);
-                            const distToRight = Math.abs(pos.x - rightEdge);
-
-                            let flankDir = distToLeft < distToRight ? -1 : 1;
-                            
-                            // Prevent flanking path from guiding Golems off screen
-                            if (pos.x < 140) flankDir = 1;
-                            else if (pos.x > 1300) flankDir = -1;
-
-                            Body.setVelocity(this.body, { x: flankDir * moveSpeed, y: this.body.velocity.y });
-
-                            if (py < pos.y - 60 && this.jumpCooldown <= 0 && Math.abs(this.body.velocity.y) < 1.0) {
-                                Body.setVelocity(this.body, { x: flankDir * 4.5, y: -16 });
-                                this.jumpCooldown = 90;
-                                SoundFX.playJump();
-                            }
+                        let flankSpeed = 1.45 * dir;
+                        if (!this.isEntering) {
+                            if (pos.x < 110) flankSpeed = Math.max(flankSpeed, 1.45);
+                            else if (pos.x > 1330) flankSpeed = Math.min(flankSpeed, -1.45);
                         }
+                        Body.setVelocity(this.body, { x: flankSpeed, y: this.body.velocity.y });
                     } else {
                         // CLEAR LINE-OF-SIGHT: Wind up and release!
                         this.windupTimer++;
@@ -3170,12 +3507,26 @@
             }
 
             if (!this.heldMob || this.hasClearLine) {
-                let spd = (this.heldMob ? 0.9 : 1.8) * dir;
+                let spd = (this.heldMob ? 0.65 : moveSpeed) * dir;
                 
+                // Stop moving horizontally if already at Steve's X or at a platform ledge boundary
+                const footY = pos.y + 75;
+                const onLeftPlat = breakablePlatforms[0] && !breakablePlatforms[0].isBroken && footY <= 675 && pos.x <= 450;
+                const onRightPlat = breakablePlatforms[2] && !breakablePlatforms[2].isBroken && footY <= 675 && pos.x >= 990;
+                const onMidPlat = breakablePlatforms[1] && !breakablePlatforms[1].isBroken && footY <= 475 && pos.x >= 490 && pos.x <= 950;
+                const playerFootY = player.body.position.y + 60;
+                const playerBelow = (onMidPlat && playerFootY > 475) || ((onLeftPlat || onRightPlat) && playerFootY > 675);
+
+                if (!playerBelow && !nav.shouldJump) {
+                    if (onLeftPlat && pos.x >= 368 && spd > 0) spd = 0;
+                    if (onRightPlat && pos.x <= 1072 && spd < 0) spd = 0;
+                    if (onMidPlat && ((pos.x <= 572 && spd < 0) || (pos.x >= 868 && spd > 0))) spd = 0;
+                }
+
                 // Arena perimeter bounds: turn around before reaching screen boundaries
                 if (!this.isEntering) {
-                    if (pos.x < 110) spd = Math.max(spd, 1.8);
-                    else if (pos.x > 1330) spd = Math.min(spd, -1.8);
+                    if (pos.x < 110) spd = Math.max(spd, moveSpeed);
+                    else if (pos.x > 1330) spd = Math.min(spd, -moveSpeed);
                 }
 
                 Body.setVelocity(this.body, { x: spd, y: this.body.velocity.y });
@@ -3187,7 +3538,7 @@
                 else if (pos.x > 1375) Matter.Body.setPosition(this.body, { x: 1375, y: pos.y });
             }
 
-            this.animTimer += 0.08;
+            this.animTimer += 0.055;
         }
 
         die(sourceBody = null) {
@@ -3200,6 +3551,11 @@
 
             ctx.save();
             ctx.translate(pos.x, pos.y);
+
+            if (this.jumpSquatTimer > 0) {
+                ctx.translate(0, 12);
+                ctx.scale(1.12, 0.84);
+            }
 
             const dir = this.facing;
             const walkCycle = Math.sin(this.animTimer);
@@ -4567,7 +4923,9 @@
                             player.releaseGrip(false);
                         }
                         this.flailReboundTimer = 45; 
-                        this.flailEntity.canBeGrabbed = false;
+                        if (this.flailEntity) {
+                            this.flailEntity.canBeGrabbed = false;
+                        }
                     }
                 }
             } else if (this.flailReboundTimer > 0) {
@@ -5235,29 +5593,20 @@
 
                 const roll = Math.random();
                 let mob;
-                if (roll < 0.28) {
+                if (roll < 0.35) {
                     mob = new Slime(x, spawnY, Math.random() < 0.25 ? 1 : 0);
                     mob.dir = dir;
                     Matter.Body.setVelocity(mob.body, { x: dir * 3.5, y: -0.5 });
-                } else if (roll < 0.56) {
+                } else if (roll < 0.70) {
                     mob = new Zombie(x, spawnY);
                     mob.dir = dir;
                     mob.facing = dir;
                     Matter.Body.setVelocity(mob.body, { x: dir * 2.2, y: -0.5 });
-                } else if (roll < 0.76) {
+                } else {
                     mob = new Skeleton(x, spawnY);
                     mob.dir = dir;
                     mob.facing = dir;
                     Matter.Body.setVelocity(mob.body, { x: dir * 2.4, y: -0.5 });
-                } else if (roll < 0.90) {
-                    mob = new Maw(x, spawnY);
-                    mob.facing = dir;
-                    Matter.Body.setVelocity(mob.body, { x: dir * 2.8, y: -0.5 });
-                } else {
-                    mob = new Golem(fromLeft ? -60 : 1500, 830);
-                    mob.dir = dir;
-                    mob.facing = dir;
-                    Matter.Body.setVelocity(mob.body, { x: dir * 1.5, y: -0.5 });
                 }
                 mob.isEntering = true;
                 mob.spawnGraceTimer = 120;
@@ -5566,8 +5915,8 @@
         if (player && !player.isDying) {
             const maxGrabRadius = 450;
             const targetDistance = psychicStick.distanceRatio * maxGrabRadius;
-            mouse.x = player.body.position.x + Math.cos(psychicStick.angle) * targetDistance;
-            mouse.y = player.body.position.y + Math.sin(psychicStick.angle) * targetDistance;
+            mouse.x = Math.max(20, Math.min(1420, player.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
+            mouse.y = Math.max(20, Math.min(900, player.body.position.y + Math.sin(psychicStick.angle) * targetDistance));
             mouse.isDown = psychicStick.distanceRatio > 0.08;
         }
     }
