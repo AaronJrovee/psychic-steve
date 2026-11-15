@@ -118,8 +118,8 @@
             background: linear-gradient(135deg, #9333ea, #c026d3);
             color: white;
             border: 3px solid rgba(243, 232, 255, 0.9);
-            padding: 1.1rem 4.2rem;
-            font-size: 2.2rem;
+            padding: 1.25rem 4.8rem;
+            font-size: 2.6rem;
             font-weight: 900;
             letter-spacing: 0.15em;
             border-radius: 9999px;
@@ -142,8 +142,8 @@
             background: linear-gradient(135deg, #7c3aed, #9333ea);
             color: white;
             border: 2px solid rgba(255, 255, 255, 0.8);
-            padding: 0.85rem 2.5rem;
-            font-size: 1.25rem;
+            padding: 1rem 3rem;
+            font-size: 1.5rem;
             font-weight: 700;
             border-radius: 9999px;
             cursor: pointer;
@@ -166,13 +166,13 @@
             <!-- Title Screen -->
             <div id="title-screen">
                 <!-- Top-Right Action Buttons (Minigames & Customization) -->
-                <div style="position: absolute; top: 22px; right: 26px; z-index: 55;" class="flex items-center gap-3">
-                    <button id="btn-open-minigames" onclick="toggleMinigamesScreen(true)" class="h-14 px-7 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 text-purple-200 hover:text-white font-extrabold tracking-widest text-lg flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" title="Minigames">
+                <div style="position: absolute; top: 24px; right: 28px; z-index: 55;" class="flex items-center gap-4">
+                    <button id="btn-open-minigames" onclick="toggleMinigamesScreen(true)" class="h-16 px-8 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 text-purple-200 hover:text-white font-extrabold tracking-widest text-2xl flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" title="Minigames">
                         MINIGAMES
                     </button>
-                    <button id="btn-open-customizer" onclick="toggleCustomizer(true)" class="w-14 h-14 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md" title="Customize Appearance">
+                    <button id="btn-open-customizer" onclick="toggleCustomizer(true)" class="w-16 h-16 rounded-full bg-slate-900/90 border-2 border-purple-400 hover:border-fuchsia-300 flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.55)] hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md" title="Customize Appearance">
                         <!-- Custom vector icon of a clothing rack / clothes rail -->
-                        <svg class="w-7 h-7 text-purple-200 hover:text-white transition-colors drop-shadow-[0_0_6px_rgba(192,132,252,0.8)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg class="w-8 h-8 text-purple-200 hover:text-white transition-colors drop-shadow-[0_0_6px_rgba(192,132,252,0.8)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <!-- Top rail bar with end stoppers -->
                             <line x1="3" y1="5" x2="21" y2="5" />
                             <circle cx="3" cy="5" r="1.2" fill="currentColor" />
@@ -191,33 +191,33 @@
                     </button>
                 </div>
 
-                <h1 class="text-8xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-4">PSYCHIC STEVE</h1>
-                <p class="text-2xl text-purple-200 mb-2 font-semibold">A / D or Arrows to Move • W or Up to Jump</p>
-                <p class="text-lg text-purple-300 mb-6 tracking-wide font-medium">HOLD Left Mouse to channel psychic waves • Release to throw</p>
+                <h1 class="text-9xl font-extrabold tracking-wider text-purple-400 drop-shadow-[0_0_30px_rgba(160,32,240,0.9)] mb-5">PSYCHIC STEVE</h1>
+                <p class="text-3xl text-purple-200 mb-3 font-bold">A / D or Arrows to Move • W or Up to Jump</p>
+                <p class="text-2xl text-purple-300 mb-8 tracking-wide font-semibold">HOLD Left Mouse to channel psychic waves • Release to throw</p>
                 
                 <!-- Difficulty Selector -->
-            <div class="flex gap-5 mb-4" id="difficulty-selector">
-                <button id="btn-diff-easy" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
-                <button id="btn-diff-normal" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
-                <button id="btn-diff-hard" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
+            <div class="flex gap-6 mb-5" id="difficulty-selector">
+                <button id="btn-diff-easy" class="px-10 py-4 rounded-full text-2xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
+                <button id="btn-diff-normal" class="px-10 py-4 rounded-full text-2xl font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
+                <button id="btn-diff-hard" class="px-10 py-4 rounded-full text-2xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
             </div>
 
             <button class="play-btn" onclick="startGame()">PLAY</button>
         </div>
 
         <!-- Minigames Selection Screen (100% Opaque) -->
-        <div id="minigames-screen" style="display: none; position: absolute; inset: 0; background-color: #0b0f19; opacity: 1; z-index: 65; pointer-events: auto;" class="flex flex-col items-center justify-center p-8">
-            <div class="w-full max-w-5xl flex items-center justify-between border-b border-purple-500/40 pb-5 mb-10">
-                <h2 class="text-5xl font-black text-purple-300 tracking-wider drop-shadow-[0_0_15px_rgba(168,85,247,0.7)]">MINIGAMES</h2>
-                <button onclick="toggleMinigamesScreen(false)" class="px-7 py-3 rounded-full text-lg font-bold text-purple-200 border-2 border-purple-400/70 bg-slate-900 hover:bg-purple-700 hover:text-white transition-all cursor-pointer">← BACK TO MENU</button>
+        <div id="minigames-screen" style="display: none; position: absolute; inset: 0; background-color: #0b0f19; opacity: 1; z-index: 65; pointer-events: auto;" class="flex flex-col items-center justify-center p-10">
+            <div class="w-full max-w-6xl flex items-center justify-between border-b border-purple-500/40 pb-6 mb-10">
+                <h2 class="text-6xl font-black text-purple-300 tracking-wider drop-shadow-[0_0_15px_rgba(168,85,247,0.7)]">MINIGAMES</h2>
+                <button onclick="toggleMinigamesScreen(false)" class="px-8 py-4 rounded-full text-2xl font-bold text-purple-200 border-2 border-purple-400/70 bg-slate-900 hover:bg-purple-700 hover:text-white transition-all cursor-pointer">← BACK TO MENU</button>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-10 w-full max-w-5xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-12 w-full max-w-6xl">
                 <!-- Slime Smasher Card -->
                 <div onclick="startMinigame('slime_smasher')" class="group cursor-pointer flex flex-col items-center">
-                    <div class="w-full h-60 rounded-2xl border-2 border-emerald-400/70 group-hover:border-emerald-300 bg-gradient-to-b from-sky-900/80 via-emerald-950/90 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_40px_rgba(52,211,153,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                    <div class="w-full h-64 rounded-2xl border-2 border-emerald-400/70 group-hover:border-emerald-300 bg-gradient-to-b from-sky-900/80 via-emerald-950/90 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_40px_rgba(52,211,153,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
                         <!-- Rectangular Illustration Box -->
-                        <svg class="w-52 h-44" viewBox="0 0 200 140">
+                        <svg class="w-56 h-48" viewBox="0 0 200 140">
                             <!-- Background psychic waves -->
                             <circle cx="100" cy="80" r="52" fill="none" stroke="#a855f7" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>
                             <!-- Big Slime -->
@@ -233,17 +233,17 @@
                             <circle cx="152" cy="99" r="3" fill="#000"/>
                             <circle cx="164" cy="99" r="3" fill="#000"/>
                         </svg>
-                        <div class="absolute bottom-3 right-4 bg-emerald-600/90 text-white text-sm font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">Endless Survival</div>
+                        <div class="absolute bottom-3 right-4 bg-emerald-600/90 text-white text-base font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Endless Survival</div>
                     </div>
-                    <h3 class="mt-4 text-3xl font-black text-emerald-300 group-hover:text-white tracking-wide transition-colors">SLIME SMASHER</h3>
-                    <p class="text-lg text-slate-300 text-center mt-2 max-w-md leading-relaxed font-medium">Slimes spawn faster and faster! Smash as many as you can before you fall.</p>
+                    <h3 class="mt-5 text-4xl font-black text-emerald-300 group-hover:text-white tracking-wide transition-colors">SLIME SMASHER</h3>
+                    <p class="text-xl text-slate-300 text-center mt-2 max-w-lg leading-relaxed font-medium">Slimes spawn faster and faster! Smash as many as you can before you fall.</p>
                 </div>
 
                 <!-- Bombs Away Card -->
                 <div onclick="startMinigame('bombs_away')" class="group cursor-pointer flex flex-col items-center">
-                    <div class="w-full h-60 rounded-2xl border-2 border-orange-400/70 group-hover:border-amber-300 bg-gradient-to-b from-rose-950/80 via-slate-900 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(249,115,22,0.25)] group-hover:shadow-[0_0_40px_rgba(251,146,60,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                    <div class="w-full h-64 rounded-2xl border-2 border-orange-400/70 group-hover:border-amber-300 bg-gradient-to-b from-rose-950/80 via-slate-900 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(249,115,22,0.25)] group-hover:shadow-[0_0_40px_rgba(251,146,60,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
                         <!-- Rectangular Illustration Box -->
-                        <svg class="w-52 h-44" viewBox="0 0 200 140">
+                        <svg class="w-56 h-48" viewBox="0 0 200 140">
                             <!-- Explosion burst -->
                             <polygon points="100,15 112,42 142,28 126,56 155,70 125,80 138,108 108,94 95,122 84,94 54,106 68,78 40,66 70,54 58,26 88,40" fill="#ea580c" opacity="0.45"/>
                             <!-- Falling Bombs -->
@@ -266,20 +266,20 @@
                                 <circle cx="15" cy="-19" r="3.5" fill="#facc15"/>
                             </g>
                         </svg>
-                        <div class="absolute bottom-3 right-4 bg-orange-600/90 text-white text-sm font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">Blast Immunity</div>
+                        <div class="absolute bottom-3 right-4 bg-orange-600/90 text-white text-base font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Blast Immunity</div>
                     </div>
-                    <h3 class="mt-4 text-3xl font-black text-orange-300 group-hover:text-white tracking-wide transition-colors">BOMBS AWAY</h3>
-                    <p class="text-lg text-slate-300 text-center mt-2 max-w-md leading-relaxed font-medium">Mobs spawn faster and faster while bombs rain from the sky! You are immune to bomb damage.</p>
+                    <h3 class="mt-5 text-4xl font-black text-orange-300 group-hover:text-white tracking-wide transition-colors">BOMBS AWAY</h3>
+                    <p class="text-xl text-slate-300 text-center mt-2 max-w-lg leading-relaxed font-medium">Mobs spawn faster and faster while bombs rain from the sky! You are immune to bomb damage.</p>
                 </div>
             </div>
         </div>
 
         <!-- Appearance Customization Pop-Up Modal -->
-        <div id="customizer-modal" class="message-box !max-w-xl !w-[94%] !p-5 !py-4" style="z-index: 70;">
-            <div class="flex items-center justify-between border-b border-purple-500/40 pb-2.5 mb-3">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-full bg-purple-600/50 border border-purple-400/80 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-purple-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div id="customizer-modal" class="message-box !max-w-5xl !w-[92%] !p-8 !py-7" style="z-index: 70;">
+            <div class="flex items-center justify-between border-b border-purple-500/40 pb-4 mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-purple-600/50 border-2 border-purple-400/80 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="3" y1="5" x2="21" y2="5" />
                             <line x1="5.5" y1="5" x2="5.5" y2="19" />
                             <line x1="18.5" y1="5" x2="18.5" y2="19" />
@@ -289,48 +289,48 @@
                             <path d="M12 5 v1.5 a1.5 1.5 0 0 1 -1.5 1.5 l-3 3.5 h9 l-3 -3.5 a1.5 1.5 0 0 1 -1.5 -1.5" stroke-width="1.6" />
                         </svg>
                     </div>
-                    <h2 class="text-xl font-black text-purple-300 tracking-wider">APPEARANCE CUSTOMIZATION</h2>
+                    <h2 class="text-4xl font-black text-purple-300 tracking-wider">APPEARANCE CUSTOMIZATION</h2>
                 </div>
-                <button onclick="toggleCustomizer(false)" class="text-slate-400 hover:text-white text-2xl font-black px-2 py-0.5 rounded-lg hover:bg-slate-800 transition-colors" title="Close">&times;</button>
+                <button onclick="toggleCustomizer(false)" class="text-slate-400 hover:text-white text-4xl font-black px-3 py-1 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer" title="Close">&times;</button>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-4 items-center">
+            <div class="flex flex-col sm:flex-row gap-8 items-center">
                 <!-- Live Preview Canvas -->
-                <div class="flex flex-col items-center justify-center bg-slate-950/80 p-2.5 rounded-xl border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.25)] shrink-0">
-                    <canvas id="customizer-preview-canvas" width="200" height="200" class="rounded-lg bg-gradient-to-b from-sky-400 via-sky-200 to-emerald-400"></canvas>
-                    <span class="text-[10px] font-semibold text-purple-200 tracking-widest mt-1.5 uppercase">Live Preview</span>
+                <div class="flex flex-col items-center justify-center bg-slate-950/80 p-4 rounded-2xl border-2 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)] shrink-0">
+                    <canvas id="customizer-preview-canvas" width="200" height="200" style="width: 310px; height: 310px;" class="rounded-xl bg-gradient-to-b from-sky-400 via-sky-200 to-emerald-400"></canvas>
+                    <span class="text-base font-bold text-purple-200 tracking-widest mt-3 uppercase">Live Preview</span>
                 </div>
 
                 <!-- Arrow Steppers List -->
-                <div class="flex-1 w-full space-y-2 text-left" id="customizer-steppers-list">
+                <div class="flex-1 w-full space-y-4 text-left" id="customizer-steppers-list">
                     <!-- Populated dynamically via renderCustomizerSteppers() -->
                 </div>
             </div>
 
-            <div class="mt-3 pt-2.5 border-t border-purple-500/30 flex justify-end">
-                <button onclick="toggleCustomizer(false)" class="restart-btn !mt-0 !text-xs !px-6 !py-1.5 font-bold">Done</button>
+            <div class="mt-6 pt-4 border-t border-purple-500/30 flex justify-end">
+                <button onclick="toggleCustomizer(false)" class="restart-btn !mt-0 !text-xl !px-10 !py-3 font-extrabold">Done</button>
             </div>
         </div>
 
         <!-- Pause Screen -->
         <div id="pause-screen" class="message-box" style="z-index: 60;">
-            <h1 class="text-5xl font-extrabold text-purple-400 mb-6 drop-shadow-md tracking-widest">PAUSED</h1>
-            <div class="flex flex-col items-center gap-4">
-                <button class="play-btn !text-xl !px-8 !py-3 !mt-0" onclick="togglePause()">RESUME</button>
-                <button class="restart-btn !mt-0 !text-lg !px-8 !py-2.5" onclick="quitToMenu()">QUIT TO MENU</button>
+            <h1 class="text-6xl font-extrabold text-purple-400 mb-8 drop-shadow-md tracking-widest">PAUSED</h1>
+            <div class="flex flex-col items-center gap-5">
+                <button class="play-btn !text-2xl !px-10 !py-4 !mt-0" onclick="togglePause()">RESUME</button>
+                <button class="restart-btn !mt-0 !text-xl !px-10 !py-3.5" onclick="quitToMenu()">QUIT TO MENU</button>
             </div>
         </div>
 
         <!-- Game Over Screen -->
         <div id="game-over-box" class="message-box">
-                <h1 class="text-4xl font-extrabold text-red-500 mb-2 drop-shadow-md">YOU DIED</h1>
-                <p id="wave-reached" class="text-xl mb-4 text-purple-200"></p>
+                <h1 class="text-6xl font-extrabold text-red-500 mb-3 drop-shadow-md">YOU DIED</h1>
+                <p id="wave-reached" class="text-2xl mb-6 text-purple-200 font-semibold"></p>
                 
                 <!-- Difficulty Selector (Post-Death) -->
-                <div class="flex gap-4 mb-6 justify-center" id="go-difficulty-selector">
-                    <button id="go-btn-diff-easy" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
-                    <button id="go-btn-diff-normal" class="px-6 py-2 rounded-full font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
-                    <button id="go-btn-diff-hard" class="px-6 py-2 rounded-full font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
+                <div class="flex gap-5 mb-7 justify-center" id="go-difficulty-selector">
+                    <button id="go-btn-diff-easy" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('easy')">EASY</button>
+                    <button id="go-btn-diff-normal" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-purple-400 bg-purple-600 transform scale-110 shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all" onclick="setDifficulty('normal')">NORMAL</button>
+                    <button id="go-btn-diff-hard" class="px-8 py-3 rounded-full text-xl font-bold text-white border-2 border-gray-500 bg-gray-800 opacity-60 hover:opacity-100 transition-all" onclick="setDifficulty('hard')">HARD</button>
                 </div>
 
                 <button class="restart-btn" onclick="resetGame()">Play Again</button>
@@ -833,7 +833,7 @@
         const difficulties = ['easy', 'normal', 'hard'];
         
         difficulties.forEach(d => {
-            const baseClass = "px-8 py-3 rounded-full text-xl font-bold text-white border-2 transition-all ";
+            const baseClass = "px-10 py-4 rounded-full text-2xl font-bold text-white border-2 transition-all ";
             let activeClass = "";
             let inactiveClass = "border-gray-500 bg-gray-800 opacity-60 hover:opacity-100";
             
@@ -994,30 +994,30 @@
             const currentOpt = options[currentIdx] || options[0];
 
             const row = document.createElement('div');
-            row.className = 'flex flex-col bg-slate-900/60 p-1.5 px-2.5 rounded-lg border border-purple-500/20';
+            row.className = 'flex flex-col bg-slate-900/60 p-3 px-4 rounded-xl border border-purple-500/25';
 
             const headerRow = document.createElement('div');
-            headerRow.className = 'flex justify-between items-center text-[11px] font-bold text-purple-300 uppercase tracking-wider mb-1';
-            headerRow.innerHTML = `<span>${cat.title}</span><span class="text-purple-400/80 font-mono text-[10px]">${currentIdx + 1} / ${options.length}</span>`;
+            headerRow.className = 'flex justify-between items-center text-base font-extrabold text-purple-300 uppercase tracking-wider mb-2';
+            headerRow.innerHTML = `<span>${cat.title}</span><span class="text-purple-400/90 font-mono text-sm">${currentIdx + 1} / ${options.length}</span>`;
 
             const controlRow = document.createElement('div');
-            controlRow.className = 'flex items-center gap-1.5';
+            controlRow.className = 'flex items-center gap-3';
 
             // Left arrow button
             const leftBtn = document.createElement('button');
-            leftBtn.className = 'w-7 h-7 rounded-md bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/40 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer shrink-0 active:scale-95';
-            leftBtn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+            leftBtn.className = 'w-11 h-11 rounded-lg bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/50 flex items-center justify-center font-bold text-base transition-colors cursor-pointer shrink-0 active:scale-95';
+            leftBtn.innerHTML = `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
             leftBtn.onclick = () => stepAppearance(cat.id, -1);
 
             // Active choice display
             const labelBox = document.createElement('div');
-            labelBox.className = 'flex-1 text-center font-bold text-xs text-white bg-slate-800/80 py-1 px-2 rounded-md border border-purple-400/40 truncate shadow-inner';
+            labelBox.className = 'flex-1 text-center font-extrabold text-xl text-white bg-slate-800/80 py-2 px-4 rounded-lg border border-purple-400/40 truncate shadow-inner';
             labelBox.textContent = currentOpt.label;
 
             // Right arrow button
             const rightBtn = document.createElement('button');
-            rightBtn.className = 'w-7 h-7 rounded-md bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/40 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer shrink-0 active:scale-95';
-            rightBtn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+            rightBtn.className = 'w-11 h-11 rounded-lg bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/50 flex items-center justify-center font-bold text-base transition-colors cursor-pointer shrink-0 active:scale-95';
+            rightBtn.innerHTML = `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
             rightBtn.onclick = () => stepAppearance(cat.id, 1);
 
             controlRow.appendChild(leftBtn);
