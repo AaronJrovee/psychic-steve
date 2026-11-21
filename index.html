@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Psychic Steve</title>
-
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="apple-touch-icon" href="favicon.png">
-    
     <!-- Tailwind for overlay styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Matter.js for 2D Physics -->
@@ -342,15 +340,15 @@
             </div>
 
             <!-- In-Canvas Top-Right Pause & Quit Buttons (Placed cleanly to the left of the Wave/Score box) -->
-            <div id="hud-layer" style="display: none; position: absolute; top: 20px; right: 274px; z-index: 55; pointer-events: auto;">
-                <div class="flex items-center gap-2.5">
-                    <button id="pause-btn" class="group bg-slate-900/90 border-2 border-purple-400/80 hover:border-purple-300 w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(168,85,247,0.8)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="togglePause()" title="Pause (P or Esc)">
-                        <svg class="w-5 h-5 text-purple-300 group-hover:text-white transition-colors drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
+            <div id="hud-layer" style="display: none; position: absolute; top: 20px; right: 278px; z-index: 55; pointer-events: auto;">
+                <div class="flex items-center gap-4">
+                    <button id="pause-btn" class="group bg-slate-900/90 border-2 border-purple-400/80 hover:border-purple-300 w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-200 shadow-[0_0_18px_rgba(168,85,247,0.45)] hover:shadow-[0_0_26px_rgba(168,85,247,0.85)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="togglePause()" title="Pause (P or Esc)">
+                        <svg class="w-9 h-9 text-purple-300 group-hover:text-white transition-colors drop-shadow-[0_0_4px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
                             <rect x="5" y="4" width="4.5" height="16" rx="2" />
                             <rect x="14.5" y="4" width="4.5" height="16" rx="2" />
                         </svg>
                     </button>
-                    <button id="quit-btn" class="group bg-slate-900/90 border-2 border-red-400/80 hover:border-red-300 px-4 h-12 rounded-xl flex items-center justify-center font-extrabold text-sm tracking-wider text-red-300 hover:text-white transition-all duration-200 shadow-[0_0_15px_rgba(239,68,68,0.35)] hover:shadow-[0_0_22px_rgba(239,68,68,0.75)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="quitToMenu()" title="Quit to Main Menu">
+                    <button id="quit-btn" class="group bg-slate-900/90 border-2 border-red-400/80 hover:border-red-300 px-8 h-20 rounded-2xl flex items-center justify-center font-black text-2xl tracking-wider text-red-300 hover:text-white transition-all duration-200 shadow-[0_0_18px_rgba(239,68,68,0.4)] hover:shadow-[0_0_26px_rgba(239,68,68,0.8)] hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md" onclick="quitToMenu()" title="Quit to Main Menu">
                         QUIT
                     </button>
                 </div>
@@ -863,6 +861,7 @@
     let isWavePendingSpawn = false;
     let entities = [];
     let particles = [];
+    let hitShockwaves = [];
     let collapsingSkeletons = [];
     let breakablePlatforms = [];
     let shakeAmount = 0;
@@ -1708,6 +1707,74 @@
         }
     }
 
+    class HitShockwave {
+        constructor(x, y, color = '#4ade80', maxRadius = 60, innerColor = null) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.innerColor = innerColor || color;
+            this.radius = 12;
+            this.maxRadius = maxRadius;
+            this.life = 14;
+            this.maxLife = 14;
+        }
+        update() {
+            this.radius += (this.maxRadius - this.radius) * 0.28;
+            this.life--;
+        }
+        draw(ctx) {
+            if (this.life <= 0) return;
+            const alpha = Math.max(0, this.life / this.maxLife);
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 3 + alpha * 4;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner mob-colored ring
+            if (this.life > this.maxLife * 0.55) {
+                ctx.strokeStyle = this.innerColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 0.65, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+    }
+
+    function createHitBurst(x, y, mobType, amount) {
+        let primaryColor = '#32cd32';
+        let secondaryColor = '#228B22';
+        if (mobType === 'slime') { primaryColor = '#32cd32'; secondaryColor = '#16a34a'; }
+        else if (mobType === 'zombie') { primaryColor = '#2E8B57'; secondaryColor = '#8FBC8F'; }
+        else if (mobType === 'golem') { primaryColor = '#64748b'; secondaryColor = '#475569'; }
+        else if (mobType === 'maw') { primaryColor = '#9333ea'; secondaryColor = '#6b21a8'; }
+        else if (mobType === 'skeleton') { primaryColor = '#cbd5e1'; secondaryColor = '#94a3b8'; }
+
+        const ringRadius = Math.min(95, 48 + amount * 0.9);
+        hitShockwaves.push(new HitShockwave(x, y, primaryColor, ringRadius, secondaryColor));
+
+        const count = Math.min(18, 7 + Math.floor(amount * 0.25));
+        for (let i = 0; i < count; i++) {
+            const col = i % 2 === 0 ? primaryColor : secondaryColor;
+            const shape = i % 2 === 0 ? 'shard' : 'circle';
+            particles.push(new Particle(
+                x + (Math.random() - 0.5) * 20,
+                y + (Math.random() - 0.5) * 20,
+                col,
+                14 + Math.min(amount * 0.2, 8),
+                Math.random() * 5 + 3,
+                16 + Math.random() * 14,
+                shape
+            ));
+        }
+    }
+
     // --- SMART PLATFORM & OBSTACLE NAVIGATION FOR MOBS ---
     function getSmartMobMove(mob, pos, halfHeight) {
         if (!player || player.isDying) {
@@ -1777,10 +1844,10 @@
                         targetX = maxOut - 15;
                         underCeiling = pos.x < 485;
                     } else if (pos.x >= minOut && pos.x <= maxOut) {
-                        targetX = 360;
+                        targetX = 340;
                         shouldJump = true;
-                        jumpVx = mob.type === 'golem' ? -7.8 : -5.6;
-                        jumpVy = mob.type === 'golem' ? -26.5 : -19.8;
+                        jumpVx = mob.type === 'golem' ? -7.8 : -6.6;
+                        jumpVy = mob.type === 'golem' ? -26.5 : -23.0;
                     } else {
                         targetX = jumpSpotX;
                     }
@@ -1793,10 +1860,10 @@
                         targetX = minOut + 15;
                         underCeiling = pos.x > 955;
                     } else if (pos.x >= minOut && pos.x <= maxOut) {
-                        targetX = 1080;
+                        targetX = 1100;
                         shouldJump = true;
-                        jumpVx = mob.type === 'golem' ? 7.8 : 5.6;
-                        jumpVy = mob.type === 'golem' ? -26.5 : -19.8;
+                        jumpVx = mob.type === 'golem' ? 7.8 : 6.6;
+                        jumpVy = mob.type === 'golem' ? -26.5 : -23.0;
                     } else {
                         targetX = jumpSpotX;
                     }
@@ -1809,8 +1876,8 @@
                             underCeiling = pos.x > 490;
                         } else if (pos.x >= 320 && pos.x <= 390) {
                             shouldJump = true;
-                            jumpVx = mob.type === 'golem' ? 8.2 : 6.2;
-                            jumpVy = mob.type === 'golem' ? -27.5 : -21.5;
+                            jumpVx = mob.type === 'golem' ? 8.2 : 6.8;
+                            jumpVy = mob.type === 'golem' ? -27.5 : -24.5;
                         } else targetX = 360;
                     } else {
                         if (pos.x > 520 && pos.x < 1050) {
@@ -1818,28 +1885,28 @@
                             underCeiling = pos.x < 950;
                         } else if (pos.x >= 1050 && pos.x <= 1120) {
                             shouldJump = true;
-                            jumpVx = mob.type === 'golem' ? -8.2 : -6.2;
-                            jumpVy = mob.type === 'golem' ? -27.5 : -21.5;
+                            jumpVx = mob.type === 'golem' ? -8.2 : -6.8;
+                            jumpVy = mob.type === 'golem' ? -27.5 : -24.5;
                         } else targetX = 1080;
                     }
                 }
             } else if (mobLevel === 1) {
                 // On a side platform and player is on the top center platform (plat2: x 520..920, y 450)
                 if (pos.x < 720) {
-                    // On left platform: run right to the ledge (x ~ 350..415) and jump right+up onto center platform
+                    // On left platform: run right to the ledge (x ~ 350..410) and jump right+up onto center platform
                     targetX = 385;
-                    if (pos.x >= 345 && pos.x <= 420) {
+                    if (pos.x >= 345 && pos.x <= 415) {
                         shouldJump = true;
-                        jumpVx = mob.type === 'golem' ? 7.8 : 5.8;
-                        jumpVy = mob.type === 'golem' ? -24.5 : -18.5;
+                        jumpVx = mob.type === 'golem' ? 7.8 : 6.5;
+                        jumpVy = mob.type === 'golem' ? -24.5 : -21.2;
                     }
                 } else {
-                    // On right platform: run left to the ledge (x ~ 1025..1090) and jump left+up onto center platform
+                    // On right platform: run left to the ledge (x ~ 1030..1090) and jump left+up onto center platform
                     targetX = 1055;
-                    if (pos.x >= 1020 && pos.x <= 1095) {
+                    if (pos.x >= 1025 && pos.x <= 1095) {
                         shouldJump = true;
-                        jumpVx = mob.type === 'golem' ? -7.8 : -5.8;
-                        jumpVy = mob.type === 'golem' ? -24.5 : -18.5;
+                        jumpVx = mob.type === 'golem' ? -7.8 : -6.5;
+                        jumpVy = mob.type === 'golem' ? -24.5 : -21.2;
                     }
                 }
             }
@@ -1865,17 +1932,17 @@
             // Both at level 1, check if on opposite side platforms
             if (pos.x < 500 && ppos.x > 940) {
                 targetX = 600;
-                if (midIntact && pos.x >= 370 && pos.x <= 425) {
+                if (midIntact && pos.x >= 355 && pos.x <= 415) {
                     shouldJump = true;
-                    jumpVx = 5.8;
-                    jumpVy = -18.5;
+                    jumpVx = 6.5;
+                    jumpVy = -21.2;
                 }
             } else if (pos.x > 940 && ppos.x < 500) {
                 targetX = 840;
-                if (midIntact && pos.x >= 1015 && pos.x <= 1070) {
+                if (midIntact && pos.x >= 1025 && pos.x <= 1085) {
                     shouldJump = true;
-                    jumpVx = -5.8;
-                    jumpVy = -18.5;
+                    jumpVx = -6.5;
+                    jumpVy = -21.2;
                 }
             }
         } else if (mobLevel === playerLevel && ppos.y < pos.y - 85 && Math.abs(ppos.x - pos.x) < 110 && !underCeiling) {
@@ -1890,16 +1957,19 @@
             const margin = mob.type === 'golem' ? 52 : 30;
             if (mobLevel === 1) {
                 if (pos.x < 720 && leftIntact) {
-                    targetX = Math.max(80, Math.min(420 - margin, targetX));
+                    targetX = Math.max(20, Math.min(420 - margin, targetX));
                 } else if (pos.x >= 720 && rightIntact) {
-                    targetX = Math.max(1020 + margin, Math.min(1360, targetX));
+                    targetX = Math.max(1020 + margin, Math.min(1420, targetX));
                 }
             } else if (mobLevel === 2 && midIntact) {
                 targetX = Math.max(520 + margin, Math.min(920 - margin, targetX));
             }
         }
 
-        const dir = targetX >= pos.x ? 1 : -1;
+        const prevDir = mob.facing || mob.dir || 1;
+        const dxToTarget = targetX - pos.x;
+        // Deadzone hysteresis prevents rapid left/right sprite oscillation when near targetX
+        const dir = Math.abs(dxToTarget) < 16 ? prevDir : (dxToTarget > 0 ? 1 : -1);
 
         // Check for boxes, boulders, or bombs blocking horizontal path and jump over them
         if (!shouldJump && !underCeiling) {
@@ -1951,6 +2021,7 @@
             this.canBeGrabbed = true;
             this.isEntering = false;
             this.spawnGraceTimer = 0;
+            this.hitFlashTimer = 0;
             Composite.add(engine.world, this.body);
             entities.push(this);
         }
@@ -1963,7 +2034,10 @@
 
             if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem' || this.type === 'maw' || this.type === 'skeleton') {
                 SoundFX.playHit();
-                shakeAmount = Math.max(shakeAmount, Math.min(18, 6 + amount * 0.35));
+                this.hitFlashTimer = 9;
+                createHitBurst(this.body.position.x, this.body.position.y, this.type, amount);
+                // Tiny, punchy screen shake when mobs take damage
+                shakeAmount = Math.max(shakeAmount, Math.min(5.5, 2.5 + amount * 0.08));
 
                 if (sourceBody) {
                     const sourcePos = sourceBody.position || sourceBody;
@@ -1990,13 +2064,13 @@
             this.isDying = true;
             this.markedForDeletion = true;
             
-            shakeAmount = 16;
+            shakeAmount = Math.max(shakeAmount, 6.5);
             
             if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem' || this.type === 'maw' || this.type === 'skeleton' || this.type === 'spike_boss') {
                 registerKill(this.body.position.x, this.body.position.y);
             }
 
-            if (this.type === 'skeleton') return;
+            if (this.type === 'skeleton' || this.type === 'bone') return;
 
             if (this.type === 'box') {
                 const shardCount = 26;
@@ -2017,7 +2091,6 @@
             else if (this.type === 'zombie') expColor = '#2E8B57';
             else if (this.type === 'golem') expColor = '#708090';
             else if (this.type === 'maw') expColor = '#6b21a8';
-            else if (this.type === 'bone') expColor = '#f1f5f9';
             else if (this.type === 'player') expColor = '#ff2222';
             else if (this.type === 'bomb') expColor = '#FF4500';
             
@@ -2054,8 +2127,8 @@
             });
             super(body, 2, 'boulder', 2.8);
             this.isGolemThrown = true;
-            this.canBeGrabbed = true;
-            this.body.isThrown = true;
+            this.canBeGrabbed = false;
+            this.body.isThrown = false;
             this.lifespan = 400;
         }
 
@@ -2370,7 +2443,15 @@
         takeDamage(amount, sourceBody = null) {
             if (this.invulnerableTimer > 0 && amount < 1000) return;
             
-            const actualDamage = amount >= 1000 ? amount : Math.min(50, amount);
+            let scaledAmount = amount;
+            if (amount < 1000) {
+                if (currentDifficulty === 'easy') {
+                    scaledAmount = Math.max(1, Math.round(amount * 0.6)); // 40% damage reduction buffer in Easy Mode
+                } else if (currentDifficulty === 'hard') {
+                    scaledAmount = Math.round(amount * 1.25); // 25% increased damage taken in Hard Mode
+                }
+            }
+            const actualDamage = amount >= 1000 ? amount : Math.min(65, scaledAmount);
 
             super.takeDamage(actualDamage, sourceBody);
             if (!this.isDying) {
@@ -2555,29 +2636,21 @@
 
                         const distToCursor = Math.hypot(b.position.x - mouse.x, b.position.y - mouse.y);
 
-                        if (currentDifficulty === 'hard') {
-                            if (distToCursor < 60) {
-                                let score = 1000 - distToCursor;
-                                if (score > bestScore) {
-                                    bestScore = score;
-                                    bestCandidate = ent;
-                                }
-                            }
-                        } else {
-                            const projAlongAim = toEnt.x * aimNorm.x + toEnt.y * aimNorm.y;
-                            const perpDist = Math.abs(toEnt.x * (-aimNorm.y) + toEnt.y * aimNorm.x);
+                        // Auto-aim target snapping along the player's aim direction across all difficulties (including Hard Mode),
+                        // while direction control after grabbing remains 100% manual without steering assistance.
+                        const projAlongAim = toEnt.x * aimNorm.x + toEnt.y * aimNorm.y;
+                        const perpDist = Math.abs(toEnt.x * (-aimNorm.y) + toEnt.y * aimNorm.x);
 
-                            let score = 0;
-                            if (projAlongAim > 10 && perpDist < 140) {
-                                score = 1000 - perpDist * 3.5 - Math.abs(distToSteve - Math.min(aimDist, maxGrabRadius)) * 0.8;
-                            } else if (distToCursor < 120) {
-                                score = 800 - distToCursor * 3.5;
-                            }
+                        let score = 0;
+                        if (projAlongAim > 10 && perpDist < 140) {
+                            score = 1000 - perpDist * 3.5 - Math.abs(distToSteve - Math.min(aimDist, maxGrabRadius)) * 0.8;
+                        } else if (distToCursor < 120) {
+                            score = 800 - distToCursor * 3.5;
+                        }
 
-                            if (score > bestScore && score > 200) {
-                                bestScore = score;
-                                bestCandidate = ent;
-                            }
+                        if (score > bestScore && score > 200) {
+                            bestScore = score;
+                            bestCandidate = ent;
                         }
                     }
 
@@ -3059,7 +3132,8 @@
                 }
 
                 const pursuitSpeed = Math.max(2.6, 4.4 - this.tier * 0.4);
-                Body.setVelocity(this.body, { x: this.dir * pursuitSpeed, y: this.body.velocity.y });
+                const moveVx = Math.abs(px - pos.x) < 12 ? 0 : this.dir * pursuitSpeed;
+                Body.setVelocity(this.body, { x: moveVx, y: this.body.velocity.y });
             } else {
                 // Idle wander fallback if no player
                 if (pos.x < 60) this.dir = 1;
@@ -3190,7 +3264,17 @@
             if (this.navJumpTimer > 0) {
                 this.navJumpTimer--;
                 if (!this.body.isThrown && !(player && player.grabbedEntity === this)) {
-                    Body.setVelocity(this.body, { x: this.navJumpVx, y: this.body.velocity.y });
+                    const footY = pos.y + 56;
+                    const overLeftPlat = breakablePlatforms[0] && !breakablePlatforms[0].isBroken && pos.x <= 390 && footY <= 645;
+                    const overRightPlat = breakablePlatforms[2] && !breakablePlatforms[2].isBroken && pos.x >= 1050 && footY <= 645;
+                    const overMidPlat = breakablePlatforms[1] && !breakablePlatforms[1].isBroken && pos.x >= 555 && pos.x <= 885 && footY <= 445;
+
+                    if (this.body.velocity.y > 0 && (overLeftPlat || overRightPlat || overMidPlat)) {
+                        this.navJumpTimer = 0;
+                        Body.setVelocity(this.body, { x: this.body.velocity.x * 0.35, y: this.body.velocity.y });
+                    } else {
+                        Body.setVelocity(this.body, { x: this.navJumpVx, y: this.body.velocity.y });
+                    }
                 }
             }
 
@@ -3202,15 +3286,17 @@
             this.facing = nav.dir;
 
             if (nav.shouldJump && this.jumpCooldown <= 0) {
-                this.jumpCooldown = 55 + Math.floor(Math.random() * 20);
+                this.jumpCooldown = 50 + Math.floor(Math.random() * 20);
                 this.navJumpVx = nav.jumpVx;
-                this.navJumpTimer = 22;
+                this.navJumpTimer = 34;
                 Body.setVelocity(this.body, { x: nav.jumpVx, y: nav.jumpVy });
                 SoundFX.playJump();
                 return;
             }
             
-            Body.setVelocity(this.body, { x: this.facing * 2.35, y: this.body.velocity.y });
+            const distToPlayerX = Math.abs(player.body.position.x - pos.x);
+            const moveVx = (distToPlayerX < 10 && Math.abs(player.body.position.y - pos.y) < 70) ? 0 : this.facing * 2.35;
+            Body.setVelocity(this.body, { x: moveVx, y: this.body.velocity.y });
             this.animTimer += 0.1;
         }
 
@@ -3225,8 +3311,10 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            if (Math.abs(this.body.velocity.x) > 0.3) {
-                this.facing = this.body.velocity.x > 0 ? 1 : -1;
+            if (!player || player.isDying) {
+                if (Math.abs(this.body.velocity.x) > 1.2) {
+                    this.facing = this.body.velocity.x > 0 ? 1 : -1;
+                }
             }
             const eyeDir = this.facing;
 
@@ -3382,6 +3470,7 @@
             if (isAirborne) {
                 if (player && player.grabbedEntity === this) {
                     if (this.heldMob) {
+                        if (this.heldMob.type === 'boulder') this.heldMob.canBeGrabbed = true;
                         this.heldMob = null;
                         this.windupTimer = 0;
                     }
@@ -3461,6 +3550,9 @@
                             const vx = Math.cos(this.telegraphAngle) * throwSpeed;
                             const vy = Math.sin(this.telegraphAngle) * throwSpeed - 2.5;
 
+                            if (this.heldMob.type === 'boulder') {
+                                this.heldMob.canBeGrabbed = true;
+                            }
                             Body.setVelocity(this.heldMob.body, { x: vx, y: vy });
                             this.heldMob.body.isThrown = true;
                             this.heldMob.body.isGolemThrown = true;
@@ -3500,6 +3592,7 @@
 
                     if (!foundCandidate) {
                         const boulder = new GolemBoulder(pos.x + this.facing * 30, pos.y + 20);
+                        boulder.canBeGrabbed = false;
                         foundCandidate = boulder;
                         SoundFX.playHit();
                         createExplosion(pos.x + this.facing * 30, 890, '#78350f', 18, 'shard');
@@ -3547,7 +3640,10 @@
         }
 
         die(sourceBody = null) {
-            if (this.heldMob) this.heldMob = null;
+            if (this.heldMob) {
+                if (this.heldMob.type === 'boulder') this.heldMob.canBeGrabbed = true;
+                this.heldMob = null;
+            }
             super.die(sourceBody);
         }
 
@@ -3651,6 +3747,9 @@
             this.facing = 1;
             this.enteringTimer = 0;
             this.chompCooldown = 0;
+            this.jumpCooldown = Math.floor(Math.random() * 30);
+            this.navJumpTimer = 0;
+            this.navJumpVx = 0;
         }
 
         update() {
@@ -3691,6 +3790,10 @@
                 this.chompCooldown--;
             }
 
+            if (this.jumpCooldown > 0) {
+                this.jumpCooldown--;
+            }
+
             // Devour boxes and bombs
             if (this.isOpen) {
                 for (let i = 0; i < entities.length; i++) {
@@ -3710,25 +3813,44 @@
                 }
             }
 
+            if (this.navJumpTimer > 0) {
+                this.navJumpTimer--;
+                if (!this.body.isThrown && !(player && player.grabbedEntity === this)) {
+                    const footY = pos.y + this.radius;
+                    const overLeftPlat = breakablePlatforms[0] && !breakablePlatforms[0].isBroken && pos.x <= 390 && footY <= 645;
+                    const overRightPlat = breakablePlatforms[2] && !breakablePlatforms[2].isBroken && pos.x >= 1050 && footY <= 645;
+                    const overMidPlat = breakablePlatforms[1] && !breakablePlatforms[1].isBroken && pos.x >= 555 && pos.x <= 885 && footY <= 445;
+
+                    if (this.body.velocity.y > 0 && (overLeftPlat || overRightPlat || overMidPlat)) {
+                        this.navJumpTimer = 0;
+                        Body.setVelocity(this.body, { x: this.body.velocity.x * 0.35, y: this.body.velocity.y });
+                    } else {
+                        Body.setVelocity(this.body, { x: this.navJumpVx, y: this.body.velocity.y });
+                    }
+                }
+            }
+
             const isMidAir = Math.abs(this.body.velocity.y) > 1.8 || this.body.isThrown || (player && player.grabbedEntity === this);
             if (isMidAir) return;
 
             if (!player || player.isDying) return;
 
-            const px = player.body.position.x;
-            const py = player.body.position.y;
-            this.facing = px > pos.x ? 1 : -1;
+            const nav = getSmartMobMove(this, pos, this.radius);
+            this.facing = nav.dir;
 
-            // Anti-stall: if Steve is camping on the middle platform above, leap upward to bite
-            const isSteveCampingAbove = (py < pos.y - 80) && Math.abs(px - pos.x) < 180;
-            const chompImpulse = this.isOpen ? 3.6 : 1.4;
-            let vy = this.body.velocity.y;
-            if (isSteveCampingAbove && Math.random() < 0.08) {
-                vy = -14.5;
-            } else if (py < pos.y - 40 && Math.random() < 0.04) {
-                vy = -7;
+            if (nav.shouldJump && this.jumpCooldown <= 0) {
+                this.jumpCooldown = 42 + Math.floor(Math.random() * 18);
+                this.navJumpVx = nav.jumpVx;
+                this.navJumpTimer = 34;
+                Body.setVelocity(this.body, { x: nav.jumpVx, y: nav.jumpVy });
+                SoundFX.playJump();
+                return;
             }
-            Body.setVelocity(this.body, { x: this.facing * chompImpulse, y: vy });
+
+            const chompImpulse = this.isOpen ? 3.6 : 1.5;
+            const distToPlayerX = Math.abs(player.body.position.x - pos.x);
+            const moveVx = (distToPlayerX < 10 && Math.abs(player.body.position.y - pos.y) < 70) ? 0 : this.facing * chompImpulse;
+            Body.setVelocity(this.body, { x: moveVx, y: this.body.velocity.y });
         }
 
         draw(ctx) {
@@ -3832,18 +3954,18 @@
     class Bone extends Entity {
         constructor(x, y, owner = null) {
             const body = Bodies.rectangle(x, y, 42, 14, {
-                restitution: 0.4,
-                friction: 0.15,
+                restitution: 0.35,
+                friction: 0.25,
                 density: 0.003
             });
             super(body, 1, 'bone', 0.9);
             this.owner = owner;
             this.ownerGraceTicks = 20;
-            this.spinAngle = 0;
+            this.spinAngle = Math.random() * Math.PI * 2;
             this.canBeGrabbed = true;
             this.isBroken = false;
-            this.durability = 3;
-            this.lifespan = 600;
+            this.durability = 2;
+            this.lifespan = 300;
             this.isFadingOnGround = false;
             this.fadeAlpha = 1.0;
         }
@@ -3865,7 +3987,7 @@
                 this.isFadingOnGround = false;
                 this.fadeAlpha = 1.0;
             } else if (this.isFadingOnGround) {
-                this.fadeAlpha -= 0.04;
+                this.fadeAlpha -= 0.06;
                 if (this.fadeAlpha <= 0) {
                     this.die();
                     return;
@@ -3880,8 +4002,14 @@
 
             if (Math.abs(this.body.velocity.x) > 0.8 || Math.abs(this.body.velocity.y) > 0.8) {
                 this.spinAngle += 0.22;
-                Body.setAngle(this.body, this.spinAngle);
             }
+        }
+
+        die(sourceBody = null) {
+            if (this.owner && this.owner.activeBone === this) {
+                this.owner.activeBone = null;
+            }
+            super.die(sourceBody);
         }
 
         breakBone() {
@@ -3889,13 +4017,11 @@
             this.durability--;
             if (this.durability <= 0) {
                 this.isBroken = true;
-                if (this.owner) this.owner.activeBone = null;
+                if (this.owner && this.owner.activeBone === this) this.owner.activeBone = null;
                 SoundFX.playBoneClack();
-                createExplosion(this.body.position.x, this.body.position.y, '#f8fafc', 3);
                 this.die();
             } else {
                 SoundFX.playBoneClack();
-                createExplosion(this.body.position.x, this.body.position.y, '#f8fafc', 3);
             }
         }
 
@@ -3903,7 +4029,7 @@
             const pos = this.body.position;
             ctx.save();
             ctx.translate(pos.x, pos.y);
-            ctx.rotate(this.body.angle);
+            ctx.rotate(this.spinAngle);
 
             if (this.isFadingOnGround) {
                 ctx.globalAlpha = Math.max(0, this.fadeAlpha);
@@ -4051,7 +4177,7 @@
             this.facing = 1;
             this.enteringTimer = 0;
             this.hasBone = true;
-            this.throwCooldown = 45;
+            this.throwCooldown = 35 + Math.floor(Math.random() * 90);
             this.activeBone = null;
             this.strafeTimer = Math.floor(Math.random() * 60);
             this.strafeDir = Math.random() > 0.5 ? 1 : -1;
@@ -4090,11 +4216,14 @@
 
             const px = player.body.position.x;
             const distToSteve = Math.abs(px - pos.x);
-            this.facing = px > pos.x ? 1 : -1;
+            if (distToSteve > 14) {
+                this.facing = px > pos.x ? 1 : -1;
+            }
 
             if (this.throwCooldown > 0) {
                 this.throwCooldown--;
-                if (this.throwCooldown <= 30 && !this.hasBone) {
+                const activeBoneGone = !this.activeBone || this.activeBone.isDying || this.activeBone.markedForDeletion || this.activeBone.isFadingOnGround;
+                if (this.throwCooldown <= 30 && !this.hasBone && activeBoneGone) {
                     this.hasBone = true;
                 }
             }
@@ -4138,7 +4267,7 @@
         throwBone() {
             if (!this.hasBone || !player || player.isDying) return;
             this.hasBone = false;
-            this.throwCooldown = 95;
+            this.throwCooldown = 110 + Math.floor(Math.random() * 45);
 
             const pos = this.body.position;
             const spawnX = pos.x + this.facing * 24;
@@ -5427,6 +5556,7 @@
 
         collect(playerEntity) {
             if (this.markedForDeletion || this.isDying) return;
+            if (!playerEntity || playerEntity.hp >= playerEntity.maxHp) return;
             this.markedForDeletion = true;
             this.isDying = true;
             
@@ -5506,6 +5636,7 @@
         Engine.clear(engine);
         entities = [];
         particles = [];
+        hitShockwaves = [];
         collapsingSkeletons = [];
         wave = 1;
         playerDeathFade = 0;
@@ -6069,14 +6200,14 @@
                 }
             }
 
-            if (entA.type === 'slime' && entB.type === 'player' && isStart) {
+            if (entA.type === 'slime' && entB.type === 'player') {
                 if (player.invulnerableTimer <= 0) {
                     const dmg = entA.tier === 0 ? 10 : (entA.isBoss ? 35 : 15 + entA.tier * 5);
                     player.takeDamage(dmg, entA.body);
                     applyPlayerHurtKnockback(entA.body);
                 }
             }
-            if (entB.type === 'slime' && entA.type === 'player' && isStart) {
+            if (entB.type === 'slime' && entA.type === 'player') {
                 if (player.invulnerableTimer <= 0) {
                     const dmg = entB.tier === 0 ? 10 : (entB.isBoss ? 35 : 15 + entB.tier * 5);
                     player.takeDamage(dmg, entB.body);
@@ -6198,17 +6329,17 @@
             }
 
             if (entA.type === 'bone' && entB.type === 'skeleton') {
+                if (!bodyA.isThrown) return;
                 const isFlying = Math.hypot(bodyA.velocity.x, bodyA.velocity.y) > 6 || bodyA.isThrown;
-                const isOwnerImmune = entA.owner === entB && entA.ownerGraceTicks > 0 && !bodyA.isThrown;
-                if (isFlying && !isOwnerImmune && (bodyA.isThrown || entA.owner !== entB || entA.ownerGraceTicks <= 0)) {
+                if (isFlying) {
                     entB.takeDamage(10, bodyA);
                     entA.breakBone();
                 }
             }
             if (entB.type === 'bone' && entA.type === 'skeleton') {
+                if (!bodyB.isThrown) return;
                 const isFlying = Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 6 || bodyB.isThrown;
-                const isOwnerImmune = entB.owner === entA && entB.ownerGraceTicks > 0 && !bodyB.isThrown;
-                if (isFlying && !isOwnerImmune && (bodyB.isThrown || entB.owner !== entA || entB.ownerGraceTicks <= 0)) {
+                if (isFlying) {
                     entA.takeDamage(10, bodyB);
                     entB.breakBone();
                 }
@@ -6317,7 +6448,7 @@
 
         if (entA && entA.type === 'bone' && (bodyA.isThrown || Math.hypot(bodyA.velocity.x, bodyA.velocity.y) > 7)) {
             if (entB && entB.type !== 'bone') {
-                if (entB.type === 'skeleton' && entA.owner === entB && entA.ownerGraceTicks > 0 && !bodyA.isThrown) return;
+                if (entB.type === 'skeleton' && !bodyA.isThrown) return;
                 entB.takeDamage(10, bodyA);
                 entA.breakBone();
                 return;
@@ -6325,7 +6456,7 @@
         }
         if (entB && entB.type === 'bone' && (bodyB.isThrown || Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 7)) {
             if (entA && entA.type !== 'bone') {
-                if (entA.type === 'skeleton' && entB.owner === entA && entB.ownerGraceTicks > 0 && !bodyB.isThrown) return;
+                if (entA.type === 'skeleton' && !bodyB.isThrown) return;
                 entA.takeDamage(10, bodyB);
                 entB.breakBone();
                 return;
@@ -6746,6 +6877,12 @@
             if (p.life <= 0) particles.splice(i, 1);
         }
 
+        for (let i = hitShockwaves.length - 1; i >= 0; i--) {
+            const hs = hitShockwaves[i];
+            hs.update();
+            if (hs.life <= 0) hitShockwaves.splice(i, 1);
+        }
+
         for (let i = collapsingSkeletons.length - 1; i >= 0; i--) {
             const cs = collapsingSkeletons[i];
             cs.update();
@@ -6827,12 +6964,30 @@
             if (e.type === 'player') {
                 playerRef = e;
             } else {
-                e.draw(ctx);
+                if (e.hitFlashTimer > 0) {
+                    e.hitFlashTimer--;
+                    ctx.save();
+                    const pos = e.body.position;
+                    const flashRatio = e.hitFlashTimer / 9;
+                    const squash = 1 + flashRatio * 0.14;
+                    const stretch = 1 - flashRatio * 0.10;
+                    ctx.translate(pos.x, pos.y);
+                    ctx.scale(squash, stretch);
+                    ctx.translate(-pos.x, -pos.y);
+                    e.draw(ctx);
+                    ctx.restore();
+                } else {
+                    e.draw(ctx);
+                }
             }
         }
 
         if (playerRef) {
             playerRef.draw(ctx);
+        }
+
+        for (let i = 0; i < hitShockwaves.length; i++) {
+            hitShockwaves[i].draw(ctx);
         }
 
         for (let i = 0; i < collapsingSkeletons.length; i++) {
