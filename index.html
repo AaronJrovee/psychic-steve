@@ -4753,7 +4753,8 @@
             const minX = this.radius + 12;
             const maxX = 1440 - this.radius - 12;
             const minY = this.radius + 12;
-            const maxY = 895 - this.radius;
+            // Allow the boss to sink into the ground up to y = 830 during Stage 3 dashes/slams
+            const maxY = this.bossStage === 3 ? 830 : (900 - this.radius);
 
             let clampedX = pos.x;
             let clampedY = pos.y;
@@ -4838,10 +4839,12 @@
             // STAGE 3: PONG BOUNCE & SLAM
             // ==================
             if (this.bossStage === 3) {
-                this.angle += 0.28; 
-                this.body.ignoreGravity = true;
+                this.angle += 0.28;
                 const isHeld = player && player.grabbedEntity === this;
-                
+
+                // Enable normal gravity when vulnerable/thrown so the boss falls to the floor when released
+                this.body.ignoreGravity = (this.state === 'stage3_whirl' || this.state === 'stage3_pause' || this.state === 'stage3_dash' || this.state === 'stage3_stuck');
+
                 if (this.regrabCooldown > 0) {
                     this.regrabCooldown--;
                     this.canBeGrabbed = false;
@@ -4883,9 +4886,10 @@
                     player.grabTimer = 120;
                     this.weight = 1.2;
                     this.state = 'stage3_vulnerable';
-                } else if (!this.body.isThrown && player && !player.isDying) {
+                    this.stuckAnchorX = null;
+                } else if (player && !player.isDying) {
                     this.stateTimer++;
-                    
+
                     if (this.state === 'stage3_whirl') {
                         this.canBeGrabbed = false;
                         this.weight = 5.2;
@@ -4900,26 +4904,30 @@
                         let curY = pos.y + this.pongVy;
                         let bounced = false;
 
-                        // Wall bounces with slight deflection angle variation to cover entire arena
-                        if (curX <= 80) {
-                            curX = 80;
+                        const minPongX = this.radius + 15;
+                        const maxPongX = 1440 - this.radius - 15;
+                        const minPongY = this.radius + 15;
+                        const maxPongY = 900 - this.radius - 15;
+
+                        if (curX <= minPongX) {
+                            curX = minPongX;
                             this.pongVx = Math.abs(this.pongVx);
                             this.pongVy += (Math.random() - 0.5) * 2.5;
                             bounced = true;
-                        } else if (curX >= 1360) {
-                            curX = 1360;
+                        } else if (curX >= maxPongX) {
+                            curX = maxPongX;
                             this.pongVx = -Math.abs(this.pongVx);
                             this.pongVy += (Math.random() - 0.5) * 2.5;
                             bounced = true;
                         }
 
-                        if (curY <= 110) {
-                            curY = 110;
+                        if (curY <= minPongY) {
+                            curY = minPongY;
                             this.pongVy = Math.abs(this.pongVy);
                             this.pongVx += (Math.random() - 0.5) * 2.5;
                             bounced = true;
-                        } else if (curY >= 790) {
-                            curY = 790;
+                        } else if (curY >= maxPongY) {
+                            curY = maxPongY;
                             this.pongVy = -Math.abs(this.pongVy);
                             this.pongVx += (Math.random() - 0.5) * 2.5;
                             bounced = true;
@@ -4947,7 +4955,7 @@
                         }
 
                         // After ~7 seconds (420 frames) of arena-covering bounces, target Steve
-                        if (this.stateTimer > 420) { 
+                        if (this.stateTimer > 420) {
                             this.state = 'stage3_pause';
                             this.stateTimer = 0;
                             this.targetLandingX = player.body.position.x;
@@ -4956,39 +4964,38 @@
                     } else if (this.state === 'stage3_pause') {
                         this.canBeGrabbed = false;
                         Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
-                        
+
                         // Moving landing reticle tracks player position smoothly with lead
                         if (player && !player.isDying) {
-                            const targetX = Math.max(120, Math.min(1320, player.body.position.x));
+                            const targetX = Math.max(130, Math.min(1310, player.body.position.x));
                             this.targetLandingX = (this.targetLandingX || targetX) * 0.85 + targetX * 0.15;
                         }
-                        
+
                         // Flash warning sparks
                         if (this.stateTimer % 6 === 0) {
                             particles.push(new Particle(this.targetLandingX, 895, '#ef4444', 6, 4, 18));
                         }
-                        
+
                         // Telegraph pause before high-velocity slam
-                        if (this.stateTimer > 75) { 
+                        if (this.stateTimer > 75) {
                             this.state = 'stage3_dash';
                             this.stateTimer = 0;
-                            const targetY = 820;
+                            const targetY = 815;
                             const dx = (this.targetLandingX || pos.x) - pos.x;
                             const dy = targetY - pos.y;
                             const dist = Math.hypot(dx, dy) || 1;
                             const dashSpeed = 54; // Fast, decisive slam
                             this.dashVx = (dx / dist) * dashSpeed;
                             this.dashVy = (dy / dist) * dashSpeed;
-                            Matter.Body.setVelocity(this.body, { 
-                                x: this.dashVx, 
-                                y: this.dashVy 
+                            Matter.Body.setVelocity(this.body, {
+                                x: this.dashVx,
+                                y: this.dashVy
                             });
                             SoundFX.playExplosion(1.3);
                             shakeAmount = 24;
                         }
                     } else if (this.state === 'stage3_dash') {
                         this.canBeGrabbed = false;
-                        // Maintain full high velocity throughout flight to prevent deceleration
                         if (this.dashVx !== undefined && this.dashVy !== undefined) {
                             Matter.Body.setVelocity(this.body, { x: this.dashVx, y: this.dashVy });
                         }
@@ -4999,35 +5006,40 @@
                             particles.push(new Particle(pos.x, pos.y, '#ef4444', 6, Math.random() * 4 + 2, 14));
                         }
 
-                        // Full flight until it physically reaches the ground
-                        if (pos.y >= 815) {
+                        // Embed into the ground once it reaches y >= 785
+                        if (pos.y >= 785) {
                             this.state = 'stage3_stuck';
                             this.stateTimer = 0;
                             this.vulnerableTimer = 0;
                             this.slamCount = 0;
-                            this.canBeGrabbed = true; 
-                            this.weight = 1.2; 
+                            this.canBeGrabbed = true;
+                            this.weight = 1.2;
+                            this.stuckAnchorX = Math.max(this.radius + 15, Math.min(1440 - this.radius - 15, pos.x));
                             Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
-                            Matter.Body.setPosition(this.body, { x: pos.x, y: 820 });
+                            Matter.Body.setPosition(this.body, { x: this.stuckAnchorX, y: 815 });
                             SoundFX.playHit();
                             SoundFX.playExplosion(1.4);
                             shakeAmount = 40;
-                            createExplosion(pos.x, pos.y + this.radius, '#78350f', 40, 'shard');
+                            createExplosion(this.stuckAnchorX, 895, '#78350f', 40, 'shard');
                         }
                     } else if (this.state === 'stage3_stuck') {
-                        this.weight = 1.2; 
-                        
-                        // Rapid violent shaking while stuck in the ground
+                        this.weight = 1.2;
+                        if (!this.stuckAnchorX) {
+                            this.stuckAnchorX = Math.max(this.radius + 15, Math.min(1440 - this.radius - 15, pos.x));
+                        }
+
+                        // Rapid violent shaking while stuck in the ground around fixed anchor
                         const shakeX = (Math.random() - 0.5) * 8;
                         const shakeY = (Math.random() - 0.5) * 4;
-                        Matter.Body.setPosition(this.body, { x: pos.x + shakeX, y: 820 + shakeY });
+                        Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
+                        Matter.Body.setPosition(this.body, { x: this.stuckAnchorX + shakeX, y: 815 + shakeY });
 
                         // Continuous dirt and debris erupting from contact point
                         if (this.stateTimer % 3 === 0) {
                             const dirtColors = ['#78350f', '#92400e', '#a16207', '#57300a'];
                             const dc = dirtColors[Math.floor(Math.random() * dirtColors.length)];
                             particles.push(new Particle(
-                                pos.x + (Math.random() - 0.5) * (this.radius * 1.3),
+                                this.stuckAnchorX + (Math.random() - 0.5) * (this.radius * 1.3),
                                 890,
                                 dc,
                                 9,
@@ -5038,16 +5050,18 @@
                         }
                     } else if (this.state === 'stage3_vulnerable') {
                         this.weight = 1.2;
-                        // On the ground or air, waiting to be picked up again
-                        if (pos.y > 830) {
-                            Matter.Body.setPosition(this.body, { x: pos.x, y: 830 });
-                            Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.7, y: 0 });
+                        // When thrown or dropped back onto the ground, re-enter stuck struggling state
+                        if (pos.y >= 782 && this.body.velocity.y >= -1.0) {
+                            this.state = 'stage3_stuck';
+                            this.stuckAnchorX = Math.max(this.radius + 15, Math.min(1440 - this.radius - 15, pos.x));
+                            Matter.Body.setVelocity(this.body, { x: 0, y: 0 });
+                            Matter.Body.setPosition(this.body, { x: this.stuckAnchorX, y: 815 });
                         }
                     }
                 }
 
                 this.clampInsideArena();
-                return; 
+                return;
             }
 
             // ==================
@@ -5316,9 +5330,7 @@
             ctx.save();
             ctx.translate(pos.x, pos.y);
 
-            const isStuckPanic = (this.bossStage === 3 && (this.state === 'stage3_stuck' || this.state === 'stage3_vulnerable' || (player && player.grabbedEntity === this))) ||
-                                 this.state === 'transition_1_to_2' ||
-                                 this.state === 'transition_2_to_3';
+            const isStuckPanic = this.bossStage === 3 && (this.state === 'stage3_stuck' || this.state === 'stage3_vulnerable' || (player && player.grabbedEntity === this));
 
             // Consistent fiery aura in Stage 3 or Stage 2 -> 3 transition
             if (this.bossStage === 3 || this.state === 'transition_2_to_3') {
@@ -6803,11 +6815,12 @@
             }
         }
 
-        // STAGE 3 BOSS GROUND SLAMS: Requires heavy slam velocity (relVel >= 18.0)
-        const HEAVY_SLAM_THRESHOLD = 18.0;
+        // STAGE 3 BOSS GROUND SLAMS: Slamming the boss into the ground deals 1 hit and embeds it back into the dirt
+        const HEAVY_SLAM_THRESHOLD = 11.0;
         const processBossSlam = (bossEntity, otherBody) => {
             bossEntity.hitCooldown = 0;
             bossEntity.slamCount = (bossEntity.slamCount || 0) + 1;
+            bossEntity.body.isThrown = true;
             bossEntity.takeDamage(1, otherBody);
             shakeAmount = Math.max(shakeAmount, 36);
 
@@ -6816,27 +6829,34 @@
                 player.releaseGrip(false);
             }
             bossEntity.body.isThrown = false;
-            Matter.Body.setVelocity(bossEntity.body, { x: bossEntity.body.velocity.x * 0.2, y: -4 });
+
+            if (bossEntity.isDying) return;
 
             // Check if 3 slams reached -> BREAK OUT IMMEDIATELY
             if (bossEntity.slamCount >= 3) {
                 bossEntity.triggerBreakout();
             } else {
-                // Must be picked up again: small cooldown before next grab
-                bossEntity.state = 'stage3_vulnerable';
-                bossEntity.regrabCooldown = 25;
+                // Embed back into the ground struggling in panic, with a brief cooldown before the next grab
+                bossEntity.state = 'stage3_stuck';
+                bossEntity.stuckAnchorX = Math.max(bossEntity.radius + 15, Math.min(1440 - bossEntity.radius - 15, bossEntity.body.position.x));
+                Matter.Body.setVelocity(bossEntity.body, { x: 0, y: 0 });
+                Matter.Body.setPosition(bossEntity.body, { x: bossEntity.stuckAnchorX, y: 815 });
+                createExplosion(bossEntity.stuckAnchorX, 895, '#78350f', 32, 'shard');
+                bossEntity.regrabCooldown = 22;
                 bossEntity.canBeGrabbed = false;
             }
         };
 
         if (entA && entA.type === 'spike_boss' && entA.bossStage === 3 && (entA.state === 'stage3_stuck' || entA.state === 'stage3_vulnerable')) {
-            if (bodyB.isStatic && (bodyA.isThrown || relVel >= HEAVY_SLAM_THRESHOLD)) {
+            const isHeldA = player && player.grabbedEntity === entA;
+            if (bodyB.isStatic && (bodyA.isThrown || isHeldA) && relVel >= HEAVY_SLAM_THRESHOLD) {
                 processBossSlam(entA, bodyB);
                 return;
             }
         }
         if (entB && entB.type === 'spike_boss' && entB.bossStage === 3 && (entB.state === 'stage3_stuck' || entB.state === 'stage3_vulnerable')) {
-            if (bodyA.isStatic && (bodyB.isThrown || relVel >= HEAVY_SLAM_THRESHOLD)) {
+            const isHeldB = player && player.grabbedEntity === entB;
+            if (bodyA.isStatic && (bodyB.isThrown || isHeldB) && relVel >= HEAVY_SLAM_THRESHOLD) {
                 processBossSlam(entB, bodyA);
                 return;
             }
