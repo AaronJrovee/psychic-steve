@@ -215,7 +215,7 @@
                 <button onclick="toggleMinigamesScreen(false)" class="px-8 py-4 rounded-full text-2xl font-bold text-purple-200 border-2 border-purple-400/70 bg-slate-900 hover:bg-purple-700 hover:text-white transition-all cursor-pointer">← BACK TO MENU</button>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full max-w-6xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
                 <!-- Slime Smasher Card -->
                 <div onclick="startMinigame('slime_smasher')" class="group cursor-pointer flex flex-col items-center">
                     <div class="w-full h-64 rounded-2xl border-2 border-emerald-400/70 group-hover:border-emerald-300 bg-gradient-to-b from-sky-900/80 via-emerald-950/90 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_40px_rgba(52,211,153,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
@@ -300,6 +300,40 @@
                     </div>
                     <h3 class="mt-5 text-4xl font-black text-amber-300 group-hover:text-white tracking-wide transition-colors">BOX STACKER</h3>
                     <p class="text-xl text-slate-300 text-center mt-2 max-w-lg leading-relaxed font-medium">Build the tallest crate tower you can in 2 minutes while fending off tower-smashing mobs!</p>
+                </div>
+
+                <!-- Box Surfer Card -->
+                <div onclick="startMinigame('box_surfer')" class="group cursor-pointer flex flex-col items-center">
+                    <div class="w-full h-64 rounded-2xl border-2 border-red-500/70 group-hover:border-orange-300 bg-gradient-to-b from-slate-900 via-red-950/85 to-orange-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.25)] group-hover:shadow-[0_0_40px_rgba(249,115,22,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                        <svg class="w-56 h-48" viewBox="0 0 200 140">
+                            <!-- Bubbling Lava Floor -->
+                            <path d="M0,112 Q25,104 50,112 T100,112 T150,112 T200,112 L200,140 L0,140 Z" fill="#ea580c"/>
+                            <path d="M0,120 Q30,113 60,120 T120,120 T180,120 T200,120 L200,140 L0,140 Z" fill="#f97316"/>
+                            <circle cx="45" cy="110" r="6" fill="#facc15" opacity="0.85"/>
+                            <circle cx="135" cy="108" r="8" fill="#fbbf24" opacity="0.85"/>
+                            <circle cx="165" cy="116" r="5" fill="#fef08a" opacity="0.9"/>
+                            <!-- Floating/Falling Crates -->
+                            <g transform="translate(48, 42) rotate(-14)">
+                                <rect x="0" y="0" width="34" height="34" fill="#D2B48C" stroke="#8B4513" stroke-width="3"/>
+                                <line x1="0" y1="0" x2="34" y2="34" stroke="#8B4513" stroke-width="2.5"/>
+                                <line x1="34" y1="0" x2="0" y2="34" stroke="#8B4513" stroke-width="2.5"/>
+                            </g>
+                            <g transform="translate(115, 24) rotate(12)">
+                                <rect x="0" y="0" width="34" height="34" fill="#D2B48C" stroke="#8B4513" stroke-width="3"/>
+                                <line x1="0" y1="0" x2="34" y2="34" stroke="#8B4513" stroke-width="2.5"/>
+                                <line x1="34" y1="0" x2="0" y2="34" stroke="#8B4513" stroke-width="2.5"/>
+                            </g>
+                            <!-- Burning Crate in Lava -->
+                            <g transform="translate(88, 86) rotate(8)">
+                                <rect x="0" y="0" width="32" height="32" fill="#D2B48C" stroke="#ea580c" stroke-width="3"/>
+                                <line x1="0" y1="0" x2="32" y2="32" stroke="#8B4513" stroke-width="2.5"/>
+                                <line x1="32" y1="0" x2="0" y2="32" stroke="#8B4513" stroke-width="2.5"/>
+                            </g>
+                        </svg>
+                        <div class="absolute bottom-3 right-4 bg-red-600/90 text-white text-base font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Floor Is Lava</div>
+                    </div>
+                    <h3 class="mt-5 text-4xl font-black text-orange-400 group-hover:text-white tracking-wide transition-colors">BOX SURFER</h3>
+                    <p class="text-xl text-slate-300 text-center mt-2 max-w-lg leading-relaxed font-medium">The floor is lava! Surf on falling crates as they spawn slower and slower over time.</p>
                 </div>
             </div>
         </div>
@@ -2655,7 +2689,19 @@
                 clamped = true;
             }
 
-            if (currentY > 840) {
+            if (currentGameMode === 'box_surfer') {
+                if (currentY >= 835) {
+                    currentY = 830;
+                    clamped = true;
+                    this.takeDamage(30, null);
+                    Body.setVelocity(this.body, { x: this.body.velocity.x * 0.85, y: -27.5 });
+                    this.canJump = false;
+                    SoundFX.playExplosion(0.75);
+                    SoundFX.playJump();
+                    createExplosion(currentX, 895, '#f97316', 28);
+                    createExplosion(currentX, 895, '#facc15', 18);
+                }
+            } else if (currentY > 840) {
                 currentY = 840;
                 if (this.body.velocity.y > 0) Body.setVelocity(this.body, { x: this.body.velocity.x, y: 0 });
                 clamped = true;
@@ -2663,7 +2709,7 @@
 
             if (clamped) Body.setPosition(this.body, { x: currentX, y: currentY });
 
-            const maxGrabRadius = 450;
+            const maxGrabRadius = currentGameMode === 'box_surfer' ? 950 : 450;
             if (isMobileDevice && psychicStick.active) {
                 const targetDistance = psychicStick.distanceRatio * maxGrabRadius;
                 mouse.x = Math.max(-1500, Math.min(2940, this.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
@@ -2811,7 +2857,7 @@
             }
 
             const pos = this.body.position;
-            const maxGrabRadius = 450;
+            const maxGrabRadius = currentGameMode === 'box_surfer' ? 950 : 450;
             const rayPreset = RAY_COLOR_PRESETS[steveAppearance.rayColor] || RAY_COLOR_PRESETS.purple;
 
             if (mouse.isDown) {
@@ -5510,18 +5556,55 @@
     class Box extends Entity {
         constructor(x, y) {
             const isStacker = currentGameMode === 'box_stacker';
+            const isSurfer = currentGameMode === 'box_surfer';
             const body = Bodies.rectangle(x, y, 60, 60, {
                 density: 0.005,
-                friction: isStacker ? 0.85 : 0.1,
+                friction: isStacker ? 0.85 : (isSurfer ? 0.6 : 0.1),
+                frictionAir: isSurfer ? 0.022 : 0.01,
                 restitution: isStacker ? 0.02 : 0
             });
             super(body, isStacker ? 8 : 3, 'box', 2.0);
         }
 
         takeDamage(amount, sourceBody = null) {
-            // In Box Stacker, boxes never break from drops, throws, or player collisions
-            if (currentGameMode === 'box_stacker') return;
+            // In Box Stacker and Box Surfer, boxes never break from drops, throws, or collisions
+            if (currentGameMode === 'box_stacker' || currentGameMode === 'box_surfer') return;
             super.takeDamage(amount, sourceBody);
+        }
+
+        update() {
+            if (this.isDying || this.markedForDeletion) return;
+            if (currentGameMode === 'box_surfer') {
+                const pos = this.body.position;
+                const isHeld = player && player.grabbedEntity === this;
+
+                // Counteract 30% of world gravity and cap downward fall speed for a natural, slightly slower fall
+                if (!isHeld) {
+                    Body.applyForce(this.body, pos, {
+                        x: 0,
+                        y: -this.body.mass * 0.0006
+                    });
+                    if (this.body.velocity.y > 8.5) {
+                        Body.setVelocity(this.body, {
+                            x: this.body.velocity.x,
+                            y: 8.5
+                        });
+                    }
+                }
+
+                // Burn up immediately when falling into the lava floor (unless currently held above lava by Steve)
+                if (pos.y >= 866) {
+                    if (player && player.grabbedEntity === this) {
+                        player.releaseGrip(false);
+                    }
+                    this.isDying = true;
+                    this.markedForDeletion = true;
+                    SoundFX.playExplosion(0.45);
+                    createExplosion(pos.x, 895, '#f97316', 22);
+                    createExplosion(pos.x, 895, '#facc15', 14);
+                    createExplosion(pos.x, pos.y, '#78350f', 10, 'shard');
+                }
+            }
         }
 
         takeMobDamage(amount, sourceBody = null) {
@@ -5834,7 +5917,7 @@
 
         let localStaticBodies = [ground, groundLeftExt, groundRightExt, wallLeft, wallRight];
 
-        if (currentGameMode === 'box_stacker') {
+        if (currentGameMode === 'box_stacker' || currentGameMode === 'box_surfer') {
             breakablePlatforms = [];
         } else {
             const plat1 = Bodies.rectangle(90, 650, 660, 30, { isStatic: true });
@@ -5858,6 +5941,12 @@
                 new Box(startXs[i], 860);
                 boxStackerSpawnedCount++;
             }
+        } else if (currentGameMode === 'box_surfer') {
+            // Spawn initial falling crates (including one under Steve) so you can catch/land right away
+            const starterXs = [260, 500, 720, 940, 1180];
+            for (let i = 0; i < starterXs.length; i++) {
+                new Box(starterXs[i], i === 2 ? 460 : 120 + (i % 2) * 140);
+            }
         }
 
         if (gameStarted) {
@@ -5874,6 +5963,20 @@
     function updateMinigameSpawns() {
         minigameElapsedTicks++;
         minigameSpawnTimer++;
+
+        if (currentGameMode === 'box_surfer') {
+            // Score is time survived in seconds
+            minigameScore = Math.floor(minigameElapsedTicks / 60);
+
+            // Starts at 2 boxes per 1 second (1 box every 30 ticks) and gradually slows down over time
+            const currentSpawnInterval = Math.min(180, Math.floor(30 + minigameElapsedTicks / 75));
+            if (minigameSpawnTimer >= currentSpawnInterval) {
+                minigameSpawnTimer = 0;
+                const dropX = 90 + Math.random() * 1260;
+                new Box(dropX, -70);
+            }
+            return;
+        }
 
         if (currentGameMode === 'box_stacker') {
             // Only count settled boxes inside the arena that form a continuous touching chain from the ground up
@@ -6338,7 +6441,7 @@
         psychicStick.stickY = psychicStick.baseY + (dist === 0 ? 0 : (dy / dist) * clampedDist);
 
         if (player && !player.isDying) {
-            const maxGrabRadius = 450;
+            const maxGrabRadius = currentGameMode === 'box_surfer' ? 950 : 450;
             const targetDistance = psychicStick.distanceRatio * maxGrabRadius;
             mouse.x = Math.max(20, Math.min(1420, player.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
             mouse.y = Math.max(20, Math.min(900, player.body.position.y + Math.sin(psychicStick.angle) * targetDistance));
@@ -6857,8 +6960,48 @@
     // --- DRAWING & RENDER LOOP ---
 
     function drawStatic() {
-        ctx.fillStyle = '#32CD32'; 
-        ctx.fillRect(-3000, 900, 7440, 600); 
+        if (currentGameMode === 'box_surfer') {
+            ctx.save();
+            const now = Date.now();
+            const lavaGrad = ctx.createLinearGradient(0, 890, 0, 960);
+            lavaGrad.addColorStop(0, '#f97316');
+            lavaGrad.addColorStop(0.35, '#ea580c');
+            lavaGrad.addColorStop(1, '#9a3412');
+            ctx.fillStyle = lavaGrad;
+            ctx.fillRect(0, 895, 1440, 65);
+
+            // Glowing top lava wave crest
+            ctx.shadowColor = '#f97316';
+            ctx.shadowBlur = 22;
+            ctx.fillStyle = '#fb923c';
+            ctx.beginPath();
+            ctx.moveTo(0, 960);
+            for (let x = 0; x <= 1440; x += 30) {
+                const waveY = 896 + Math.sin(x * 0.025 + now / 180) * 5 + Math.cos(x * 0.04 - now / 130) * 3;
+                ctx.lineTo(x, waveY);
+            }
+            ctx.lineTo(1440, 960);
+            ctx.closePath();
+            ctx.fill();
+
+            // Animated rising & popping orange/yellow lava bubbles
+            for (let b = 0; b < 18; b++) {
+                const seed = b * 197.3;
+                const bx = (seed * 37) % 1400 + 20;
+                const cycle = ((now / (420 + (b % 5) * 70)) + seed) % 1;
+                const by = 948 - cycle * 54;
+                const br = (3.5 + (b % 4) * 2.2) * Math.sin(cycle * Math.PI);
+
+                ctx.fillStyle = cycle > 0.75 ? '#fef08a' : '#facc15';
+                ctx.beginPath();
+                ctx.arc(bx + Math.sin(now / 200 + b) * 6, by, Math.max(1, br), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        } else {
+            ctx.fillStyle = '#32CD32'; 
+            ctx.fillRect(-3000, 900, 7440, 600); 
+        } 
 
         for (let i = 0; i < breakablePlatforms.length; i++) {
             let plat = breakablePlatforms[i];
@@ -6981,6 +7124,8 @@
             ctx.fillText(`WAVE ${wave}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
         } else if (currentGameMode === 'box_stacker') {
             ctx.fillText(`HEIGHT: ${minigameScore}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
+        } else if (currentGameMode === 'box_surfer') {
+            ctx.fillText(`TIME: ${minigameScore}s`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
         } else {
             ctx.fillText(`SCORE: ${minigameScore}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
         }
@@ -6991,6 +7136,11 @@
             const secsLeft = Math.max(0, Math.ceil((7200 - minigameElapsedTicks) / 60));
             ctx.fillStyle = secsLeft <= 10 ? '#f87171' : '#fef08a';
             ctx.fillText(`Time: ${secsLeft}s • Peak: ${boxStackerHighestPeak}`, infoBoxX + infoBoxW / 2, infoBoxY + 72);
+        } else if (currentGameMode === 'box_surfer') {
+            const curInterval = Math.min(180, Math.floor(30 + minigameElapsedTicks / 75));
+            const boxesPerSec = (60 / curInterval).toFixed(1);
+            ctx.fillStyle = '#fdba74';
+            ctx.fillText(`Drop Rate: ${boxesPerSec}/s`, infoBoxX + infoBoxW / 2, infoBoxY + 72);
         } else {
             ctx.fillStyle = livingEnemiesCount > 0 ? '#f87171' : '#4ade80';
             ctx.fillText(`Enemies: ${livingEnemiesCount}`, infoBoxX + infoBoxW / 2, infoBoxY + 72);
@@ -7119,6 +7269,30 @@
                 ctx.font = '600 17px Inter';
                 ctx.fillStyle = '#fef08a';
                 ctx.fillText('You are INVINCIBLE with MAX Psychic Power • Stop mobs from toppling your tower!', 0, 48);
+            } else if (currentGameMode === 'box_surfer') {
+                ctx.shadowColor = '#ea580c';
+                ctx.shadowBlur = 35;
+                ctx.fillStyle = 'rgba(32, 10, 4, 0.86)';
+                ctx.beginPath();
+                ctx.roundRect(-420, -82, 840, 164, 24);
+                ctx.fill();
+
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.font = '900 52px Inter';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('BOX SURFER', 0, -28);
+
+                ctx.font = '700 20px Inter';
+                ctx.fillStyle = '#fed7aa';
+                ctx.shadowBlur = 8;
+                ctx.fillText('The floor is bubbling lava! Catch & surf on falling crates to stay alive.', 0, 16);
+
+                ctx.font = '600 17px Inter';
+                ctx.fillStyle = '#fef08a';
+                ctx.fillText('Crates burn in lava & spawn slower over time • Lava deals 30 DMG!', 0, 48);
             }
 
             ctx.restore();
@@ -7434,6 +7608,10 @@
                     if (goTitle) { goTitle.innerText = "TIME'S UP!"; goTitle.className = 'text-6xl font-extrabold text-amber-400 mb-3 drop-shadow-md'; }
                     if (goDiffSelector) goDiffSelector.style.display = 'none';
                     document.getElementById('wave-reached').innerText = `Final Stack: ${minigameScore} Boxes (Peak: ${boxStackerHighestPeak})`;
+                } else if (currentGameMode === 'box_surfer') {
+                    if (goTitle) { goTitle.innerText = 'BURNED IN LAVA'; goTitle.className = 'text-6xl font-extrabold text-orange-500 mb-3 drop-shadow-md'; }
+                    if (goDiffSelector) goDiffSelector.style.display = 'none';
+                    document.getElementById('wave-reached').innerText = `Time Survived: ${minigameScore}s`;
                 } else {
                     if (goTitle) { goTitle.innerText = 'YOU DIED'; goTitle.className = 'text-6xl font-extrabold text-red-500 mb-3 drop-shadow-md'; }
                     if (goDiffSelector) goDiffSelector.style.display = 'none';
