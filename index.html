@@ -215,7 +215,7 @@
                 <button onclick="toggleMinigamesScreen(false)" class="px-8 py-4 rounded-full text-2xl font-bold text-purple-200 border-2 border-purple-400/70 bg-slate-900 hover:bg-purple-700 hover:text-white transition-all cursor-pointer">← BACK TO MENU</button>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-12 w-full max-w-6xl">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full max-w-6xl">
                 <!-- Slime Smasher Card -->
                 <div onclick="startMinigame('slime_smasher')" class="group cursor-pointer flex flex-col items-center">
                     <div class="w-full h-64 rounded-2xl border-2 border-emerald-400/70 group-hover:border-emerald-300 bg-gradient-to-b from-sky-900/80 via-emerald-950/90 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_40px_rgba(52,211,153,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
@@ -273,6 +273,33 @@
                     </div>
                     <h3 class="mt-5 text-4xl font-black text-orange-300 group-hover:text-white tracking-wide transition-colors">BOMBS AWAY</h3>
                     <p class="text-xl text-slate-300 text-center mt-2 max-w-lg leading-relaxed font-medium">Mobs spawn faster and faster while bombs rain from the sky! You are immune to bomb damage.</p>
+                </div>
+
+                <!-- Box Stacker Card -->
+                <div onclick="startMinigame('box_stacker')" class="group cursor-pointer flex flex-col items-center">
+                    <div class="w-full h-64 rounded-2xl border-2 border-amber-400/70 group-hover:border-yellow-300 bg-gradient-to-b from-sky-900/80 via-amber-950/80 to-slate-950 overflow-hidden relative flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.25)] group-hover:shadow-[0_0_40px_rgba(251,191,36,0.6)] transition-all duration-200 group-hover:scale-[1.03]">
+                        <svg class="w-56 h-48" viewBox="0 0 200 140">
+                            <!-- Stacked Wooden Crates -->
+                            <g transform="translate(82, 92)">
+                                <rect x="0" y="0" width="36" height="36" fill="#D2B48C" stroke="#8B4513" stroke-width="3"/>
+                                <line x1="0" y1="0" x2="36" y2="36" stroke="#8B4513" stroke-width="2.5"/>
+                                <line x1="36" y1="0" x2="0" y2="36" stroke="#8B4513" stroke-width="2.5"/>
+                            </g>
+                            <g transform="translate(85, 54) rotate(4)">
+                                <rect x="0" y="0" width="36" height="36" fill="#D2B48C" stroke="#8B4513" stroke-width="3"/>
+                                <line x1="0" y1="0" x2="36" y2="36" stroke="#8B4513" stroke-width="2.5"/>
+                                <line x1="36" y1="0" x2="0" y2="36" stroke="#8B4513" stroke-width="2.5"/>
+                            </g>
+                            <g transform="translate(80, 16) rotate(-5)">
+                                <rect x="0" y="0" width="36" height="36" fill="#D2B48C" stroke="#8B4513" stroke-width="3"/>
+                                <line x1="0" y1="0" x2="36" y2="36" stroke="#8B4513" stroke-width="2.5"/>
+                                <line x1="36" y1="0" x2="0" y2="36" stroke="#8B4513" stroke-width="2.5"/>
+                            </g>
+                        </svg>
+                        <div class="absolute bottom-3 right-4 bg-amber-600/90 text-white text-base font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">2m Tower Challenge</div>
+                    </div>
+                    <h3 class="mt-5 text-4xl font-black text-amber-300 group-hover:text-white tracking-wide transition-colors">BOX STACKER</h3>
+                    <p class="text-xl text-slate-300 text-center mt-2 max-w-lg leading-relaxed font-medium">Build the tallest crate tower you can in 2 minutes while fending off tower-smashing mobs!</p>
                 </div>
             </div>
         </div>
@@ -868,11 +895,54 @@
     let livingEnemiesCount = 0;
 
     // --- MINIGAME STATE ---
-    let currentGameMode = 'normal'; // 'normal', 'slime_smasher', 'bombs_away'
+    let currentGameMode = 'normal'; // 'normal', 'slime_smasher', 'bombs_away', 'box_stacker'
     let minigameScore = 0;
     let minigameElapsedTicks = 0;
     let minigameSpawnTimer = 0;
     let minigameBombTimer = 0;
+    let boxStackerSpawnedCount = 0;
+    let boxStackerHighestPeak = 0;
+    let cameraZoom = 1.0;
+
+    function screenToWorldCoords(screenX, screenY) {
+        if (currentGameMode !== 'box_stacker' || cameraZoom === 1.0) {
+            return { x: screenX, y: screenY };
+        }
+        return {
+            x: 720 + (screenX - 720) / cameraZoom,
+            y: 900 + (screenY - 900) / cameraZoom
+        };
+    }
+
+    function getTargetBoxForMob(pos, preferBase = false) {
+        let bestBox = null;
+        let bestScore = Infinity;
+        for (let i = 0; i < entities.length; i++) {
+            const e = entities[i];
+            if (e && e.type === 'box' && !e.isDying && !e.markedForDeletion) {
+                if (player && player.grabbedEntity === e) continue;
+                const bx = e.body.position.x;
+                const by = e.body.position.y;
+                if (preferBase) {
+                    // Zombies prefer boxes near the ground base
+                    const groundDist = Math.max(0, 870 - by);
+                    const score = Math.abs(bx - pos.x) + groundDist * 2.5;
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestBox = e;
+                    }
+                } else {
+                    // Skeletons and Golems aim for higher stacked boxes first
+                    const score = by * 1.5 + Math.abs(bx - pos.x) * 0.35;
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestBox = e;
+                    }
+                }
+            }
+        }
+        return bestBox;
+    }
 
     function toggleMinigamesScreen(show) {
         const screen = document.getElementById('minigames-screen');
@@ -1613,10 +1683,9 @@
 
     function getCanvasCoords(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
-        return {
-            x: (clientX - rect.left) * (canvas.width / rect.width),
-            y: (clientY - rect.top) * (canvas.height / rect.height)
-        };
+        const sx = (clientX - rect.left) * (canvas.width / rect.width);
+        const sy = (clientY - rect.top) * (canvas.height / rect.height);
+        return screenToWorldCoords(sx, sy);
     }
 
     // --- HELPER CLASSES ---
@@ -2044,7 +2113,9 @@
             this.isDying = true;
             this.markedForDeletion = true;
             
-            shakeAmount = Math.max(shakeAmount, 6.5);
+            if (!(currentGameMode === 'box_stacker' && this.type === 'box' && !sourceBody)) {
+                shakeAmount = Math.max(shakeAmount, 6.5);
+            }
             
             if (this.type === 'slime' || this.type === 'zombie' || this.type === 'golem' || this.type === 'maw' || this.type === 'skeleton' || this.type === 'spike_boss') {
                 registerKill(this.body.position.x, this.body.position.y);
@@ -2421,6 +2492,7 @@
         }
 
         takeDamage(amount, sourceBody = null) {
+            if (currentGameMode === 'box_stacker') return;
             if (this.invulnerableTimer > 0 && amount < 1000) return;
             
             let scaledAmount = amount;
@@ -2447,9 +2519,12 @@
                 if (impartBoost) {
                     const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
                     const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
-                    const maxThrowSpeed = cfg.maxThrowSpeed;
-                    let vx = b.velocity.x * cfg.throwBoost;
-                    let vy = b.velocity.y * cfg.throwBoost;
+                    const isStackerBox = currentGameMode === 'box_stacker' && this.grabbedEntity.type === 'box';
+                    const maxThrowSpeed = isStackerBox ? 9.5 : cfg.maxThrowSpeed;
+                    const boost = isStackerBox ? 0.45 : cfg.throwBoost;
+                    let vx = b.velocity.x * boost;
+                    let vy = b.velocity.y * boost;
+                    if (isStackerBox && vy < -7.5) vy = -7.5;
                     const spd = Math.hypot(vx, vy);
                     if (spd > maxThrowSpeed) {
                         vx = (vx / spd) * maxThrowSpeed;
@@ -2591,8 +2666,8 @@
             const maxGrabRadius = 450;
             if (isMobileDevice && psychicStick.active) {
                 const targetDistance = psychicStick.distanceRatio * maxGrabRadius;
-                mouse.x = Math.max(20, Math.min(1420, this.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
-                mouse.y = Math.max(20, Math.min(900, this.body.position.y + Math.sin(psychicStick.angle) * targetDistance));
+                mouse.x = Math.max(-1500, Math.min(2940, this.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
+                mouse.y = Math.max(-5000, Math.min(900, this.body.position.y + Math.sin(psychicStick.angle) * targetDistance));
             }
             if (mouse.isDown) {
                 if (!this.grabbedEntity) {
@@ -2686,8 +2761,9 @@
                         
                         const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
                         const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
-                        const psychicDrag = cfg.psychicDrag;
-                        const maxHeldSpeed = cfg.maxHeldSpeed;
+                        const isStackerBox = currentGameMode === 'box_stacker' && this.grabbedEntity.type === 'box';
+                        const psychicDrag = isStackerBox ? 0.78 : cfg.psychicDrag;
+                        const maxHeldSpeed = isStackerBox ? 11.5 : cfg.maxHeldSpeed;
 
                         let targetVx = (b.velocity.x * psychicDrag) + (force.x * cfg.pullForce * weightFactor);
                         let targetVy = (b.velocity.y * psychicDrag) + (force.y * cfg.pullForce * weightFactor);
@@ -3262,6 +3338,30 @@
             if (isMidAir) return;
             if (!player || player.isDying) return;
 
+            if (currentGameMode === 'box_stacker') {
+                const targetBox = getTargetBoxForMob(pos, true);
+                if (targetBox) {
+                    const bx = targetBox.body.position.x;
+                    const by = targetBox.body.position.y;
+                    const dx = bx - pos.x;
+                    if (Math.abs(dx) > 12) this.facing = dx > 0 ? 1 : -1;
+
+                    const distToBox = Math.hypot(dx, by - pos.y);
+                    if (distToBox < 85) {
+                        this.boxAttackTimer = (this.boxAttackTimer || 0) + 1;
+                        if (this.boxAttackTimer >= 20) {
+                            this.boxAttackTimer = 0;
+                            targetBox.takeMobDamage(2.5, this.body);
+                            Body.applyForce(targetBox.body, targetBox.body.position, { x: this.facing * 0.045, y: -0.02 });
+                        }
+                    }
+                    const moveVx = Math.abs(dx) < 38 ? 0 : this.facing * 2.5;
+                    Body.setVelocity(this.body, { x: moveVx, y: this.body.velocity.y });
+                    this.animTimer += 0.12;
+                    return;
+                }
+            }
+
             const nav = getSmartMobMove(this, pos, 56);
             this.facing = nav.dir;
 
@@ -3494,14 +3594,21 @@
                     Body.setPosition(this.heldMob.body, launchOrigin);
                     Body.setVelocity(this.heldMob.body, { x: 0, y: 0 });
 
-                    // Predictive aim calculation leading Steve's velocity
-                    const stevePos = player.body.position;
-                    const steveVel = player.body.velocity;
-                    const rawDist = Math.hypot(stevePos.x - launchOrigin.x, stevePos.y - launchOrigin.y);
+                    // In Box Stacker, Golems aim at the stacked tower boxes instead of Steve
+                    let aimPos = player.body.position;
+                    let aimVel = player.body.velocity;
+                    if (currentGameMode === 'box_stacker') {
+                        const targetBox = getTargetBoxForMob(pos, false);
+                        if (targetBox) {
+                            aimPos = targetBox.body.position;
+                            aimVel = targetBox.body.velocity;
+                        }
+                    }
+                    const rawDist = Math.hypot(aimPos.x - launchOrigin.x, aimPos.y - launchOrigin.y);
                     const leadFrames = Math.min(22, rawDist / 38);
 
-                    const predictedX = stevePos.x + steveVel.x * leadFrames;
-                    const predictedY = stevePos.y + steveVel.y * leadFrames * 0.5 - 15;
+                    const predictedX = aimPos.x + aimVel.x * leadFrames;
+                    const predictedY = aimPos.y + aimVel.y * leadFrames * 0.5 - 15;
                     this.telegraphAngle = Math.atan2(predictedY - launchOrigin.y, predictedX - launchOrigin.x);
 
                     // Check line of sight against barriers
@@ -3562,6 +3669,7 @@
                             e.type !== 'golem' &&
                             e.type !== 'spike_boss' &&
                             e.type !== 'flail' &&
+                            !(currentGameMode === 'box_stacker' && (e.type === 'box' || e.type === 'player')) &&
                             !e.isBoss &&
                             (!player || player.grabbedEntity !== e) &&
                             Math.hypot(e.body.position.x - pos.x, e.body.position.y - pos.y) < 180) {
@@ -4256,8 +4364,15 @@
             const bone = new Bone(spawnX, spawnY, this);
             this.activeBone = bone;
 
-            const targetX = player.body.position.x;
-            const targetY = player.body.position.y - 10;
+            let targetX = player.body.position.x;
+            let targetY = player.body.position.y - 10;
+            if (currentGameMode === 'box_stacker') {
+                const targetBox = getTargetBoxForMob(pos, false);
+                if (targetBox) {
+                    targetX = targetBox.body.position.x;
+                    targetY = targetBox.body.position.y;
+                }
+            }
             const dx = targetX - spawnX;
             const dy = targetY - spawnY;
             const dist = Math.hypot(dx, dy) || 1;
@@ -5394,8 +5509,31 @@
 
     class Box extends Entity {
         constructor(x, y) {
-            const body = Bodies.rectangle(x, y, 60, 60, { density: 0.005 });
-            super(body, 3, 'box', 2.0); 
+            const isStacker = currentGameMode === 'box_stacker';
+            const body = Bodies.rectangle(x, y, 60, 60, {
+                density: 0.005,
+                friction: isStacker ? 0.85 : 0.1,
+                restitution: isStacker ? 0.02 : 0
+            });
+            super(body, isStacker ? 8 : 3, 'box', 2.0);
+        }
+
+        takeDamage(amount, sourceBody = null) {
+            // In Box Stacker, boxes never break from drops, throws, or player collisions
+            if (currentGameMode === 'box_stacker') return;
+            super.takeDamage(amount, sourceBody);
+        }
+
+        takeMobDamage(amount, sourceBody = null) {
+            if (this.hp <= 0 || this.isDying) return;
+            this.hp -= amount;
+            this.hitFlashTimer = 6;
+            SoundFX.playHit();
+            createExplosion(this.body.position.x, this.body.position.y, '#D2B48C', 5, 'shard');
+            if (this.hp <= 0) {
+                this.hp = 0;
+                this.die(sourceBody);
+            }
         }
         
         die() {
@@ -5423,6 +5561,9 @@
             ctx.stroke();
 
             ctx.restore();
+            if (currentGameMode === 'box_stacker') {
+                this.drawHpBar(ctx, 42);
+            }
         }
     }
 
@@ -5676,31 +5817,48 @@
         minigameBombTimer = 0;
         document.getElementById('game-over-box').style.display = 'none';
 
-        const ground = Bodies.rectangle(720, 930, 1440, 60, { isStatic: true, render: { fillStyle: '#32CD32' } });
-        const groundLeftExt = Bodies.rectangle(-200, 930, 600, 60, { isStatic: true });
-        const groundRightExt = Bodies.rectangle(1640, 930, 600, 60, { isStatic: true });
+        boxStackerSpawnedCount = 0;
+        boxStackerHighestPeak = 0;
+        cameraZoom = 1.0;
 
-        const plat1 = Bodies.rectangle(90, 650, 660, 30, { isStatic: true });
-        const plat2 = Bodies.rectangle(720, 450, 400, 30, { isStatic: true });
-        const plat3 = Bodies.rectangle(1350, 650, 660, 30, { isStatic: true });
-        
+        const ground = Bodies.rectangle(720, 930, 1440, 60, { isStatic: true, render: { fillStyle: '#32CD32' } });
+        const groundLeftExt = Bodies.rectangle(-800, 930, 1800, 60, { isStatic: true });
+        const groundRightExt = Bodies.rectangle(2240, 930, 1800, 60, { isStatic: true });
+
         ground.isGround = true;
         groundLeftExt.isGround = true;
         groundRightExt.isGround = true;
-        
-        plat1.isGround = true; plat1.origW = 660; plat1.origH = 30; plat1.isBroken = false; plat1.restoreAlpha = 1;
-        plat2.isGround = true; plat2.origW = 400; plat2.origH = 30; plat2.isBroken = false; plat2.restoreAlpha = 1;
-        plat3.isGround = true; plat3.origW = 660; plat3.origH = 30; plat3.isBroken = false; plat3.restoreAlpha = 1;
-        breakablePlatforms = [plat1, plat2, plat3];
 
-        const wallLeft = Bodies.rectangle(-450, 200, 100, 2400, { isStatic: true });
-        const wallRight = Bodies.rectangle(1890, 200, 100, 2400, { isStatic: true });
-        const ceiling = Bodies.rectangle(720, -200, 2800, 50, { isStatic: true });
+        const wallLeft = Bodies.rectangle(-1200, -1500, 100, 6000, { isStatic: true });
+        const wallRight = Bodies.rectangle(2640, -1500, 100, 6000, { isStatic: true });
 
-        const localStaticBodies = [ground, groundLeftExt, groundRightExt, plat1, plat2, plat3, wallLeft, wallRight, ceiling];
+        let localStaticBodies = [ground, groundLeftExt, groundRightExt, wallLeft, wallRight];
+
+        if (currentGameMode === 'box_stacker') {
+            breakablePlatforms = [];
+        } else {
+            const plat1 = Bodies.rectangle(90, 650, 660, 30, { isStatic: true });
+            const plat2 = Bodies.rectangle(720, 450, 400, 30, { isStatic: true });
+            const plat3 = Bodies.rectangle(1350, 650, 660, 30, { isStatic: true });
+            plat1.isGround = true; plat1.origW = 660; plat1.origH = 30; plat1.isBroken = false; plat1.restoreAlpha = 1;
+            plat2.isGround = true; plat2.origW = 400; plat2.origH = 30; plat2.isBroken = false; plat2.restoreAlpha = 1;
+            plat3.isGround = true; plat3.origW = 660; plat3.origH = 30; plat3.isBroken = false; plat3.restoreAlpha = 1;
+            breakablePlatforms = [plat1, plat2, plat3];
+            const ceiling = Bodies.rectangle(720, -200, 2800, 50, { isStatic: true });
+            localStaticBodies.push(plat1, plat2, plat3, ceiling);
+        }
+
         Composite.add(engine.world, localStaticBodies);
 
         player = new Player(720, 300);
+
+        if (currentGameMode === 'box_stacker') {
+            const startXs = [520, 620, 720, 820, 920];
+            for (let i = 0; i < 5; i++) {
+                new Box(startXs[i], 860);
+                boxStackerSpawnedCount++;
+            }
+        }
 
         if (gameStarted) {
             if (currentGameMode === 'normal') {
@@ -5716,6 +5874,112 @@
     function updateMinigameSpawns() {
         minigameElapsedTicks++;
         minigameSpawnTimer++;
+
+        if (currentGameMode === 'box_stacker') {
+            // Only count settled boxes inside the arena that form a continuous touching chain from the ground up
+            const settledBoxes = entities.filter(e => {
+                if (e.type !== 'box' || e.isDying || e.markedForDeletion) return false;
+                if (player && player.grabbedEntity === e) return false;
+                const pos = e.body.position;
+                if (pos.x < 20 || pos.x > 1420 || pos.y > 885) return false;
+                const spd = Math.hypot(e.body.velocity.x, e.body.velocity.y);
+                return spd < 1.2 && Math.abs(e.body.angularVelocity) < 0.08;
+            });
+
+            const groundedSet = new Set();
+            const queue = [];
+
+            // Seed with base boxes touching the green ground (ground top is y = 900, box half-height is 30)
+            for (let i = 0; i < settledBoxes.length; i++) {
+                const b = settledBoxes[i];
+                if (b.body.bounds.max.y >= 892) {
+                    groundedSet.add(b);
+                    queue.push(b);
+                }
+            }
+
+            // BFS traversal: a box only counts if it physically touches a ground-supported box
+            while (queue.length > 0) {
+                const curr = queue.shift();
+                const cb = curr.body.bounds;
+                const expandedBounds = {
+                    min: { x: cb.min.x - 6, y: cb.min.y - 6 },
+                    max: { x: cb.max.x + 6, y: cb.max.y + 6 }
+                };
+                for (let i = 0; i < settledBoxes.length; i++) {
+                    const other = settledBoxes[i];
+                    if (groundedSet.has(other)) continue;
+                    if (Matter.Bounds.overlaps(expandedBounds, other.body.bounds)) {
+                        groundedSet.add(other);
+                        queue.push(other);
+                    }
+                }
+            }
+
+            let highestTopY = 900;
+            groundedSet.forEach(b => {
+                const boxTopY = b.body.position.y - 30;
+                if (boxTopY < highestTopY) {
+                    highestTopY = boxTopY;
+                }
+            });
+
+            const stackHeightInBoxes = highestTopY < 900 ? Math.max(1, Math.round((900 - highestTopY) / 60)) : 0;
+            minigameScore = stackHeightInBoxes;
+            if (stackHeightInBoxes > boxStackerHighestPeak) {
+                boxStackerHighestPeak = stackHeightInBoxes;
+            }
+
+            // Rain 1 box from the sky every 2 seconds (120 ticks at 60fps), up to 100 total boxes
+            if (minigameElapsedTicks > 0 && minigameElapsedTicks % 120 === 0 && boxStackerSpawnedCount < 100) {
+                boxStackerSpawnedCount++;
+                const visibleTopY = 900 - (850 / cameraZoom);
+                const dropX = 280 + Math.random() * 880;
+                new Box(dropX, Math.min(-80, visibleTopY - 80));
+            }
+
+            // Smoothly zoom camera out as the stack grows higher
+            const stackPixelHeight = Math.max(0, 900 - highestTopY);
+            const neededHeight = Math.max(960, stackPixelHeight + 440);
+            const targetZoom = Math.max(0.18, Math.min(1.0, 960 / neededHeight));
+            cameraZoom += (targetZoom - cameraZoom) * 0.06;
+
+            // Spawn 1 mob every 10 seconds (600 ticks at 60fps) to attack the box stack
+            if (minigameSpawnTimer >= 600) {
+                minigameSpawnTimer = 0;
+                const fromLeft = Math.random() < 0.5;
+                const spawnX = fromLeft ? -60 : 1500;
+                const dir = fromLeft ? 1 : -1;
+                const roll = Math.random();
+                let mob;
+                if (roll < 0.50) {
+                    mob = new Zombie(spawnX, 830);
+                    mob.facing = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 2.4, y: -0.5 });
+                } else if (roll < 0.82) {
+                    mob = new Skeleton(spawnX, 830);
+                    mob.facing = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 2.4, y: -0.5 });
+                } else {
+                    mob = new Golem(spawnX, 830);
+                    mob.facing = dir;
+                    Matter.Body.setVelocity(mob.body, { x: dir * 1.5, y: -0.5 });
+                }
+                mob.dir = dir;
+                mob.isEntering = true;
+                mob.spawnGraceTimer = 120;
+            }
+
+            // End game after 2 minutes (7200 ticks at 60fps)
+            if (minigameElapsedTicks >= 7200 && player && !player.isDying) {
+                player.isDying = true;
+                player.markedForDeletion = true;
+                document.getElementById('hud-layer').style.display = 'none';
+                SoundFX.stopMusic();
+                SoundFX.playLevelUp();
+            }
+            return;
+        }
 
         // Spawn a healing heart every 30 seconds (1800 ticks at 60fps)
         if (minigameElapsedTicks > 0 && minigameElapsedTicks % 1800 === 0) {
@@ -5822,13 +6086,14 @@
     }
 
     function resetGame() {
+        const wasMinigame = currentGameMode !== 'normal';
         currentGameMode = 'normal';
         document.getElementById('game-over-box').style.display = 'none';
         document.getElementById('pause-screen').style.display = 'none';
         document.getElementById('hud-layer').style.display = 'none';
         document.getElementById('title-screen').style.display = 'flex';
         toggleCustomizer(false);
-        toggleMinigamesScreen(false);
+        toggleMinigamesScreen(wasMinigame);
         gameStarted = false;
         isPaused = false;
         SoundFX.stopMusic();
@@ -5966,8 +6231,11 @@
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-        mouse.x = (e.clientX - rect.left) * scaleX;
-        mouse.y = (e.clientY - rect.top) * scaleY;
+        const sx = (e.clientX - rect.left) * scaleX;
+        const sy = (e.clientY - rect.top) * scaleY;
+        const worldPt = screenToWorldCoords(sx, sy);
+        mouse.x = worldPt.x;
+        mouse.y = worldPt.y;
     }
 
     canvas.addEventListener('mousemove', updateMousePos);
@@ -6390,7 +6658,7 @@
         const HIGH_VELOCITY_THRESHOLD = 15;
         const BOMB_SLAM_THRESHOLD = 4.2; // Requires slightly less force to detonate
 
-        // GOLEM THROWN MISSILE COLLISION WITH STEVE OR WALLS
+        // GOLEM THROWN MISSILE COLLISION WITH STEVE, BOXES, OR WALLS
         if (entA && bodyA.isGolemThrown) {
             if (entB && entB.type === 'player') {
                 if (player.invulnerableTimer <= 0) {
@@ -6401,7 +6669,9 @@
                 }
                 return;
             } else if (bodyB.isStatic || (entB && entB.type === 'box')) {
-                // Shatter on walls or platforms instead of phasing
+                if (currentGameMode === 'box_stacker' && entB && entB.type === 'box') {
+                    entB.takeMobDamage(4.5, bodyA);
+                }
                 createExplosion(bodyA.position.x, bodyA.position.y, '#475569', 18, 'shard');
                 SoundFX.playHit();
                 bodyA.isGolemThrown = false;
@@ -6419,7 +6689,9 @@
                 }
                 return;
             } else if (bodyA.isStatic || (entA && entA.type === 'box')) {
-                // Shatter on walls or platforms instead of phasing
+                if (currentGameMode === 'box_stacker' && entA && entA.type === 'box') {
+                    entA.takeMobDamage(4.5, bodyB);
+                }
                 createExplosion(bodyB.position.x, bodyB.position.y, '#475569', 18, 'shard');
                 SoundFX.playHit();
                 bodyB.isGolemThrown = false;
@@ -6470,7 +6742,11 @@
         if (entA && entA.type === 'bone' && (bodyA.isThrown || Math.hypot(bodyA.velocity.x, bodyA.velocity.y) > 7)) {
             if (entB && entB.type !== 'bone') {
                 if (entB.type === 'skeleton' && !bodyA.isThrown) return;
-                entB.takeDamage(10, bodyA);
+                if (currentGameMode === 'box_stacker' && entB.type === 'box' && !bodyA.isThrown) {
+                    entB.takeMobDamage(2.5, bodyA);
+                } else {
+                    entB.takeDamage(10, bodyA);
+                }
                 entA.breakBone();
                 return;
             }
@@ -6478,17 +6754,22 @@
         if (entB && entB.type === 'bone' && (bodyB.isThrown || Math.hypot(bodyB.velocity.x, bodyB.velocity.y) > 7)) {
             if (entA && entA.type !== 'bone') {
                 if (entA.type === 'skeleton' && !bodyB.isThrown) return;
-                entA.takeDamage(10, bodyB);
+                if (currentGameMode === 'box_stacker' && entA.type === 'box' && !bodyB.isThrown) {
+                    entA.takeMobDamage(2.5, bodyB);
+                } else {
+                    entA.takeDamage(10, bodyB);
+                }
                 entB.breakBone();
                 return;
             }
         }
 
-        // BOMBS: Require large slam velocity (relVel >= 21.0) and must not be currently held
+        // BOMBS: In Bombs Away, player-thrown bombs explode on the slightest touch; otherwise use BOMB_SLAM_THRESHOLD
+        const effectiveBombThreshold = currentGameMode === 'bombs_away' ? 0.05 : BOMB_SLAM_THRESHOLD;
         if (entA && entA.type === 'bomb') {
             const isHeldA = player && player.grabbedEntity === entA;
-            if (!isHeldA && entA.flungByPlayer && bodyA.isThrown) {
-                if (relVel >= BOMB_SLAM_THRESHOLD) {
+            if (!isHeldA && entA.flungByPlayer && (bodyA.isThrown || currentGameMode === 'bombs_away')) {
+                if (relVel >= effectiveBombThreshold) {
                     entA.explode();
                     return;
                 }
@@ -6496,8 +6777,8 @@
         }
         if (entB && entB.type === 'bomb') {
             const isHeldB = player && player.grabbedEntity === entB;
-            if (!isHeldB && entB.flungByPlayer && bodyB.isThrown) {
-                if (relVel >= BOMB_SLAM_THRESHOLD) {
+            if (!isHeldB && entB.flungByPlayer && (bodyB.isThrown || currentGameMode === 'bombs_away')) {
+                if (relVel >= effectiveBombThreshold) {
                     entB.explode();
                     return;
                 }
@@ -6577,7 +6858,7 @@
 
     function drawStatic() {
         ctx.fillStyle = '#32CD32'; 
-        ctx.fillRect(0, 900, 1440, 60); 
+        ctx.fillRect(-3000, 900, 7440, 600); 
 
         for (let i = 0; i < breakablePlatforms.length; i++) {
             let plat = breakablePlatforms[i];
@@ -6698,14 +6979,22 @@
         ctx.shadowBlur = 12;
         if (currentGameMode === 'normal') {
             ctx.fillText(`WAVE ${wave}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
+        } else if (currentGameMode === 'box_stacker') {
+            ctx.fillText(`HEIGHT: ${minigameScore}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
         } else {
             ctx.fillText(`SCORE: ${minigameScore}`, infoBoxX + infoBoxW / 2, infoBoxY + 40);
         }
 
         ctx.shadowBlur = 0;
         ctx.font = 'bold 22px Inter';
-        ctx.fillStyle = livingEnemiesCount > 0 ? '#f87171' : '#4ade80';
-        ctx.fillText(`Enemies: ${livingEnemiesCount}`, infoBoxX + infoBoxW / 2, infoBoxY + 72);
+        if (currentGameMode === 'box_stacker') {
+            const secsLeft = Math.max(0, Math.ceil((7200 - minigameElapsedTicks) / 60));
+            ctx.fillStyle = secsLeft <= 10 ? '#f87171' : '#fef08a';
+            ctx.fillText(`Time: ${secsLeft}s • Peak: ${boxStackerHighestPeak}`, infoBoxX + infoBoxW / 2, infoBoxY + 72);
+        } else {
+            ctx.fillStyle = livingEnemiesCount > 0 ? '#f87171' : '#4ade80';
+            ctx.fillText(`Enemies: ${livingEnemiesCount}`, infoBoxX + infoBoxW / 2, infoBoxY + 72);
+        }
 
         ctx.restore();
 
@@ -6806,6 +7095,30 @@
                 ctx.font = '600 17px Inter';
                 ctx.fillStyle = '#fef08a';
                 ctx.fillText('You are IMMUNE to bomb blasts • Rack up the highest Kill Score!', 0, 48);
+            } else if (currentGameMode === 'box_stacker') {
+                ctx.shadowColor = '#f59e0b';
+                ctx.shadowBlur = 35;
+                ctx.fillStyle = 'rgba(28, 18, 6, 0.85)';
+                ctx.beginPath();
+                ctx.roundRect(-420, -82, 840, 164, 24);
+                ctx.fill();
+
+                ctx.strokeStyle = '#fbbf24';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.font = '900 52px Inter';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('BOX STACKER', 0, -28);
+
+                ctx.font = '700 20px Inter';
+                ctx.fillStyle = '#fde68a';
+                ctx.shadowBlur = 8;
+                ctx.fillText('Build the tallest crate tower you can in 2 minutes! A new crate rains down every 2s.', 0, 16);
+
+                ctx.font = '600 17px Inter';
+                ctx.fillStyle = '#fef08a';
+                ctx.fillText('You are INVINCIBLE with MAX Psychic Power • Stop mobs from toppling your tower!', 0, 48);
             }
 
             ctx.restore();
@@ -6925,6 +7238,12 @@
         }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (currentGameMode === 'box_stacker' && cameraZoom !== 1.0) {
+            ctx.translate(720, 900);
+            ctx.scale(cameraZoom, cameraZoom);
+            ctx.translate(-720, -900);
+        }
         
         drawStatic();
         
@@ -7103,12 +7422,20 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             if (playerDeathFade >= 0.65) {
-                document.getElementById('game-over-box').style.display = 'block';
+                const goBox = document.getElementById('game-over-box');
+                goBox.style.display = 'block';
+                const goTitle = goBox.querySelector('h1');
                 const goDiffSelector = document.getElementById('go-difficulty-selector');
                 if (currentGameMode === 'normal') {
+                    if (goTitle) { goTitle.innerText = 'YOU DIED'; goTitle.className = 'text-6xl font-extrabold text-red-500 mb-3 drop-shadow-md'; }
                     if (goDiffSelector) goDiffSelector.style.display = 'flex';
                     document.getElementById('wave-reached').innerText = `You reached Wave ${finalWaveReached}`;
+                } else if (currentGameMode === 'box_stacker') {
+                    if (goTitle) { goTitle.innerText = "TIME'S UP!"; goTitle.className = 'text-6xl font-extrabold text-amber-400 mb-3 drop-shadow-md'; }
+                    if (goDiffSelector) goDiffSelector.style.display = 'none';
+                    document.getElementById('wave-reached').innerText = `Final Stack: ${minigameScore} Boxes (Peak: ${boxStackerHighestPeak})`;
                 } else {
+                    if (goTitle) { goTitle.innerText = 'YOU DIED'; goTitle.className = 'text-6xl font-extrabold text-red-500 mb-3 drop-shadow-md'; }
                     if (goDiffSelector) goDiffSelector.style.display = 'none';
                     document.getElementById('wave-reached').innerText = `Score: ${minigameScore}`;
                 }
