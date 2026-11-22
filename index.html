@@ -2553,7 +2553,7 @@
                 if (impartBoost) {
                     const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
                     const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
-                    const isStackerBox = currentGameMode === 'box_stacker' && this.grabbedEntity.type === 'box';
+                    const isStackerBox = (currentGameMode === 'box_stacker' || currentGameMode === 'box_surfer') && this.grabbedEntity.type === 'box';
                     const maxThrowSpeed = isStackerBox ? 9.5 : cfg.maxThrowSpeed;
                     const boost = isStackerBox ? 0.45 : cfg.throwBoost;
                     let vx = b.velocity.x * boost;
@@ -2807,7 +2807,7 @@
                         
                         const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
                         const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
-                        const isStackerBox = currentGameMode === 'box_stacker' && this.grabbedEntity.type === 'box';
+                        const isStackerBox = (currentGameMode === 'box_stacker' || currentGameMode === 'box_surfer') && this.grabbedEntity.type === 'box';
                         const psychicDrag = isStackerBox ? 0.78 : cfg.psychicDrag;
                         const maxHeldSpeed = isStackerBox ? 11.5 : cfg.maxHeldSpeed;
 
