@@ -1584,27 +1584,7 @@
         }
     }
 
-    // Instant Wave Skip Cheat Key (N)
-    function skipWave() {
-        if (!gameStarted || (player && player.isDying)) return;
-        
-        for (let i = entities.length - 1; i >= 0; i--) {
-            const e = entities[i];
-            if (e !== player) {
-                e.markedForDeletion = true;
-                Composite.remove(engine.world, e.body);
-                entities.splice(i, 1);
-            }
-        }
-        
-        livingEnemiesCount = 0;
-        isWavePendingSpawn = false;
-        waveTimer = 0;
-        wave++;
-        SoundFX.playLevelUp();
-        shakeAmount = 18;
-        prepareWave();
-    }
+    
 
     const mouse = { x: 0, y: 0, isDown: false };
     const keys = { w: false, a: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowRight: false };
@@ -4607,9 +4587,53 @@
             registerKill(this.body.position.x, this.body.position.y);
         }
 
+        clampInsideArena() {
+            const pos = this.body.position;
+            const minX = this.radius + 12;
+            const maxX = 1440 - this.radius - 12;
+            const minY = this.radius + 12;
+            const maxY = 895 - this.radius;
+
+            let clampedX = pos.x;
+            let clampedY = pos.y;
+            let vx = this.body.velocity.x;
+            let vy = this.body.velocity.y;
+            let hitBoundary = false;
+
+            if (pos.x < minX) {
+                clampedX = minX;
+                if (vx < 0) vx = -vx * 0.65;
+                if (this.pongVx && this.pongVx < 0) this.pongVx = Math.abs(this.pongVx);
+                hitBoundary = true;
+            } else if (pos.x > maxX) {
+                clampedX = maxX;
+                if (vx > 0) vx = -vx * 0.65;
+                if (this.pongVx && this.pongVx > 0) this.pongVx = -Math.abs(this.pongVx);
+                hitBoundary = true;
+            }
+
+            if (pos.y < minY) {
+                clampedY = minY;
+                if (vy < 0) vy = -vy * 0.65;
+                if (this.pongVy && this.pongVy < 0) this.pongVy = Math.abs(this.pongVy);
+                hitBoundary = true;
+            } else if (pos.y > maxY) {
+                clampedY = maxY;
+                if (vy > 0) vy = 0;
+                if (this.pongVy && this.pongVy > 0) this.pongVy = -Math.abs(this.pongVy);
+                hitBoundary = true;
+            }
+
+            if (hitBoundary) {
+                Matter.Body.setPosition(this.body, { x: clampedX, y: clampedY });
+                Matter.Body.setVelocity(this.body, { x: vx, y: vy });
+            }
+        }
+
         update() {
             if (this.isDying) return;
 
+            this.clampInsideArena();
             const pos = this.body.position;
             if (this.hitCooldown > 0) this.hitCooldown--;
 
@@ -4861,6 +4885,7 @@
                     }
                 }
 
+                this.clampInsideArena();
                 return; 
             }
 
@@ -5930,10 +5955,6 @@
         if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
             togglePause();
         }
-        
-        if (e.key.toLowerCase() === 'n') {
-            skipWave();
-        }
     });
 
     window.addEventListener('keyup', e => {
@@ -6832,10 +6853,14 @@
                             e.update();
                         }
 
-                        const hasGrace = (e.spawnGraceTimer && e.spawnGraceTimer > 0) || e.isEntering;
-                        if (e.body && (!hasGrace && e.body.position.y > 1050) || isNaN(e.body.position.x)) {
-                            e.die();
-                            continue;
+                        if (e.type === 'spike_boss') {
+                            e.clampInsideArena();
+                        } else {
+                            const hasGrace = (e.spawnGraceTimer && e.spawnGraceTimer > 0) || e.isEntering;
+                            if (e.body && ((!hasGrace && e.body.position.y > 1050) || isNaN(e.body.position.x))) {
+                                e.die();
+                                continue;
+                            }
                         }
 
                         if ((e.type === 'slime' || e.type === 'zombie' || e.type === 'golem' || e.type === 'maw' || e.type === 'spike_boss' || e.type === 'skeleton') && e.hp > 0) {
