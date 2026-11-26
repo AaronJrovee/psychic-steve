@@ -2554,11 +2554,22 @@
                     const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
                     const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
                     const isStackerBox = (currentGameMode === 'box_stacker' || currentGameMode === 'box_surfer') && this.grabbedEntity.type === 'box';
-                    const maxThrowSpeed = isStackerBox ? 9.5 : cfg.maxThrowSpeed;
+                    const isStage3Boss = this.grabbedEntity.type === 'spike_boss' && this.grabbedEntity.bossStage === 3;
+                    const maxThrowSpeed = isStackerBox ? 9.5 : (isStage3Boss ? 34.0 : cfg.maxThrowSpeed);
                     const boost = isStackerBox ? 0.45 : cfg.throwBoost;
                     let vx = b.velocity.x * boost;
                     let vy = b.velocity.y * boost;
                     if (isStackerBox && vy < -7.5) vy = -7.5;
+                    if (isStage3Boss) {
+                        vx *= 0.55;
+                        if (vy < 0) {
+                            // Heavy upward throw resistance
+                            vy = Math.max(-8.0, vy * 0.4);
+                        } else {
+                            // Powerful downward slam boost
+                            vy = Math.min(34.0, vy * 1.45 + 4.0);
+                        }
+                    }
                     const spd = Math.hypot(vx, vy);
                     if (spd > maxThrowSpeed) {
                         vx = (vx / spd) * maxThrowSpeed;
@@ -2712,8 +2723,9 @@
             const maxGrabRadius = currentGameMode === 'box_surfer' ? 950 : 450;
             if (isMobileDevice && psychicStick.active) {
                 const targetDistance = psychicStick.distanceRatio * maxGrabRadius;
-                mouse.x = Math.max(-1500, Math.min(2940, this.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
-                mouse.y = Math.max(-5000, Math.min(900, this.body.position.y + Math.sin(psychicStick.angle) * targetDistance));
+                const minAimY = currentGameMode === 'box_stacker' ? (900 - 850 / cameraZoom) : 20;
+                mouse.x = Math.max(20, Math.min(1420, this.body.position.x + Math.cos(psychicStick.angle) * targetDistance));
+                mouse.y = Math.max(minAimY, Math.min(900, this.body.position.y + Math.sin(psychicStick.angle) * targetDistance));
             }
             if (mouse.isDown) {
                 if (!this.grabbedEntity) {
@@ -2802,23 +2814,55 @@
                             target.y = this.body.position.y + Math.sin(angle) * maxGrabRadius;
                         }
 
+                        // Prevent walking a held mob/object off-screen while still allowing throws on release
+                        const minHoldY = currentGameMode === 'box_stacker' ? (900 - 850 / cameraZoom) : 35;
+                        target.x = Math.max(35, Math.min(1405, target.x));
+                        target.y = Math.max(minHoldY, Math.min(885, target.y));
+
                         const force = Vector.sub(target, b.position);
+                        const isStage3Boss = this.grabbedEntity.type === 'spike_boss' && this.grabbedEntity.bossStage === 3;
                         const weightFactor = Math.max(0.25, 1.25 / Math.sqrt(this.grabbedEntity.weight || 1));
                         
                         const effectiveLevel = currentDifficulty === 'easy' ? 5 : playerLevel;
                         const cfg = LEVEL_CONFIGS[effectiveLevel] || LEVEL_CONFIGS[1];
                         const isStackerBox = (currentGameMode === 'box_stacker' || currentGameMode === 'box_surfer') && this.grabbedEntity.type === 'box';
-                        const psychicDrag = isStackerBox ? 0.78 : cfg.psychicDrag;
+                        const psychicDrag = isStackerBox ? 0.78 : (isStage3Boss ? 0.80 : cfg.psychicDrag);
                         const maxHeldSpeed = isStackerBox ? 11.5 : cfg.maxHeldSpeed;
 
-                        let targetVx = (b.velocity.x * psychicDrag) + (force.x * cfg.pullForce * weightFactor);
-                        let targetVy = (b.velocity.y * psychicDrag) + (force.y * cfg.pullForce * weightFactor);
+                        let pullX = force.x * cfg.pullForce * weightFactor;
+                        let pullY = force.y * cfg.pullForce * weightFactor;
 
-                        const currentSpeed = Math.hypot(targetVx, targetVy);
-                        if (currentSpeed > maxHeldSpeed) {
-                            targetVx = (targetVx / currentSpeed) * maxHeldSpeed;
-                            targetVy = (targetVy / currentSpeed) * maxHeldSpeed;
+                        if (isStage3Boss) {
+                            pullX *= 0.55;
+                            if (force.y < 0) {
+                                // Heavy resistance when lifting the boss upward
+                                pullY *= 0.32;
+                            } else {
+                                // Crushing downward acceleration when slamming the boss into the ground
+                                pullY *= 1.85;
+                            }
                         }
+
+                        let targetVx = (b.velocity.x * psychicDrag) + pullX;
+                        let targetVy = (b.velocity.y * psychicDrag) + pullY;
+
+                        if (isStage3Boss) {
+                            // Cap upward lift speed tightly while allowing fast downward slam speed
+                            if (targetVy < -9.5) targetVy = -9.5;
+                            if (targetVy > 34.0) targetVy = 34.0;
+                            targetVx = Math.max(-12.0, Math.min(12.0, targetVx));
+                        } else {
+                            const currentSpeed = Math.hypot(targetVx, targetVy);
+                            if (currentSpeed > maxHeldSpeed) {
+                                targetVx = (targetVx / currentSpeed) * maxHeldSpeed;
+                                targetVy = (targetVy / currentSpeed) * maxHeldSpeed;
+                            }
+                        }
+
+                        // Hard keep-in-screen clamp while actively held so walking never pushes a mob out of bounds
+                        if (b.position.x < 30 && targetVx < 0) targetVx = (30 - b.position.x) * 0.25;
+                        if (b.position.x > 1410 && targetVx > 0) targetVx = (1410 - b.position.x) * 0.25;
+                        if (b.position.y < minHoldY && targetVy < 0) targetVy = (minHoldY - b.position.y) * 0.25;
 
                         Body.setVelocity(b, { x: targetVx, y: targetVy });
                         b.isThrown = true;
