@@ -3162,39 +3162,46 @@
                 }
             }
 
-            // Boss Slimes cannot be thrown out: enforce strict boundary rebound and pit bounce
-            if (this.isBoss) {
+            // Any slime bigger than the smallest tier (tier > 0) cannot be thrown out of the arena
+            if (this.tier > 0 && !this.isEntering) {
                 let clampedX = pos.x;
                 let clampedY = pos.y;
                 let bouncedEdge = false;
 
-                const minBossX = 90;
-                const maxBossX = 1350;
-                if (pos.x < minBossX) {
-                    clampedX = minBossX;
+                const minSlimeX = this.radius + 10;
+                const maxSlimeX = 1440 - this.radius - 10;
+                const minSlimeY = this.radius + 10;
+
+                if (pos.x < minSlimeX) {
+                    clampedX = minSlimeX;
                     Matter.Body.setVelocity(this.body, { x: Math.abs(this.body.velocity.x) * 0.75 + 4, y: this.body.velocity.y });
                     bouncedEdge = true;
-                } else if (pos.x > maxBossX) {
-                    clampedX = maxBossX;
+                } else if (pos.x > maxSlimeX) {
+                    clampedX = maxSlimeX;
                     Matter.Body.setVelocity(this.body, { x: -Math.abs(this.body.velocity.x) * 0.75 - 4, y: this.body.velocity.y });
                     bouncedEdge = true;
                 }
 
-                if (pos.y > 840) {
-                    clampedY = 830;
-                    Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.8, y: -16.0 });
+                if (pos.y < minSlimeY) {
+                    clampedY = minSlimeY;
+                    Matter.Body.setVelocity(this.body, { x: this.body.velocity.x, y: Math.abs(this.body.velocity.y) * 0.65 });
+                    bouncedEdge = true;
+                } else if (pos.y > 900 - this.radius) {
+                    clampedY = 900 - this.radius;
+                    Matter.Body.setVelocity(this.body, { x: this.body.velocity.x * 0.8, y: -14.0 });
                     SoundFX.playJump();
-                    createExplosion(clampedX, 890, '#22c55e', 14);
+                    createExplosion(clampedX, 890, '#22c55e', 12);
+                    bouncedEdge = true;
                 }
 
-                if (bouncedEdge || clampedY !== pos.y) {
+                if (bouncedEdge) {
                     Matter.Body.setPosition(this.body, { x: clampedX, y: clampedY });
                 }
             }
 
             if (this.spawnGraceTimer <= 0) {
-                // Regular mobs despawn off-screen; Boss Slimes are protected from ring-out despawns
-                if (!this.isBoss && (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590)))) {
+                // Only smallest slimes (tier === 0) can despawn off-screen; bigger slimes are protected from ring-outs
+                if (this.tier === 0 && (pos.y > 1050 || pos.y < -400 || (!this.isEntering && (pos.x < -150 || pos.x > 1590)))) {
                     this.die();
                     return;
                 }
@@ -5374,7 +5381,9 @@
             ctx.save();
             ctx.translate(pos.x, pos.y);
 
-            const isStuckPanic = this.bossStage === 3 && (this.state === 'stage3_stuck' || this.state === 'stage3_vulnerable' || (player && player.grabbedEntity === this));
+            const isStuckPanic = (this.bossStage === 3 && (this.state === 'stage3_stuck' || this.state === 'stage3_vulnerable' || (player && player.grabbedEntity === this))) ||
+                                 this.state === 'transition_1_to_2' ||
+                                 this.state === 'transition_2_to_3';
 
             // Consistent fiery aura in Stage 3 or Stage 2 -> 3 transition
             if (this.bossStage === 3 || this.state === 'transition_2_to_3') {
@@ -7406,7 +7415,7 @@
 
                         if (e.type === 'spike_boss') {
                             e.clampInsideArena();
-                        } else {
+                        } else if (!(e.type === 'slime' && e.tier > 0)) {
                             const hasGrace = (e.spawnGraceTimer && e.spawnGraceTimer > 0) || e.isEntering;
                             if (e.body && ((!hasGrace && e.body.position.y > 1050) || isNaN(e.body.position.x))) {
                                 e.die();
